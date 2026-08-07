@@ -1,0 +1,26 @@
+﻿# Environment & secrets
+.env
+*.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Logs
+logs/
+*.log
+
+# OS/editor junk
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Local test/scratch scripts (optional — keep if you want these tracked instead)
+# unlock_user.py
+
+dev-scratch/

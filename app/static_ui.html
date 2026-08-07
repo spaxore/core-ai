@@ -1,0 +1,420 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Secure TT AI Agent - Assistant Reclamations</title>
+<style>
+  body {
+    font-family: Segoe UI, Arial, sans-serif;
+    background: #f4f6f8;
+    margin: 0;
+    padding: 40px;
+    color: #1a1a1a;
+  }
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 10px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  }
+  h1 {
+    font-size: 22px;
+    color: #003876;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    color: #666;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+  }
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+  }
+  button {
+    margin-top: 12px;
+    background: #003876;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #002a5c;
+  }
+  button:disabled {
+    background: #999;
+    cursor: not-allowed;
+  }
+  .result {
+    margin-top: 24px;
+    display: none;
+  }
+  .card {
+    background: #f9fafb;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .card h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #003876;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge {
+    display: inline-block;
+    background: #e8f0fe;
+    color: #003876;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .confidence-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+  }
+  .confidence-high {
+    background: #e6f4ea;
+    color: #1e7e34;
+  }
+  .confidence-medium {
+    background: #fff8e1;
+    color: #b78103;
+  }
+  .confidence-low {
+    background: #fdecea;
+    color: #b00020;
+  }
+  .evidence-note {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 10px;
+    font-style: italic;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  th, td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid #eee;
+  }
+  th {
+    color: #666;
+    font-weight: 600;
+  }
+  .explanation-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #222;
+  }
+  .loading {
+    color: #666;
+    font-style: italic;
+    margin-top: 16px;
+    display: none;
+  }
+  .loading::after {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    text-align: left;
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+  @keyframes dots {
+    0%   { content: ""; }
+    25%  { content: "."; }
+    50%  { content: ".."; }
+    75%  { content: "..."; }
+    100% { content: ""; }
+  }
+  .error-text {
+    color: #b00020;
+  }
+  #loginBox {
+    max-width: 320px;
+  }
+  #loginStatus {
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  #loginError {
+    color: #b00020;
+  }
+  #loggedInBar {
+    display: none;
+    background: #e6f4ea;
+    color: #1e7e34;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  #logoutLink {
+    color: #1e7e34;
+    text-decoration: underline;
+    cursor: pointer;
+    margin-left: 10px;
+  }
+  #appBox {
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Assistant IA - Reclamations Tunisie Telecom</h1>
+  <div class="subtitle">Saisissez la reclamation du client pour lancer l'analyse automatique.</div>
+
+  <div id="loggedInBar">
+    Connecte en tant que <strong id="loggedInUser"></strong> (<span id="loggedInRole"></span>)
+    <span id="logoutLink" onclick="logout()">Se deconnecter</span>
+  </div>
+
+  <div id="loginBox">
+    <input type="text" id="loginUsername" placeholder="Nom d'utilisateur">
+    <input type="password" id="loginPassword" placeholder="Mot de passe">
+    <button id="loginBtn" onclick="login()">Se connecter</button>
+    <div id="loginStatus"></div>
+  </div>
+
+  <div id="appBox">
+    <textarea id="complaintText" placeholder="Exemple: Client 21693926356 se plaint que son solde diminue chaque jour a cause d'un abonnement SMS+..."></textarea>
+    <br>
+    <button id="submitBtn" onclick="submitComplaint()">Analyser la reclamation</button>
+
+    <div class="loading" id="loadingMsg">Analyse en cours, veuillez patienter</div>
+
+    <div class="result" id="resultBox">
+      <div class="card">
+        <h3>Classification</h3>
+        <span class="badge" id="categoryBadge"></span><span class="confidence-badge" id="confidenceBadge"></span>
+        <div style="margin-top:8px; font-size:13px; color:#555;">
+          Numero client detecte: <strong id="msisdnValue"></strong>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Preuves recuperees</h3>
+        <div class="evidence-note">Donnees des 60 derniers jours pour ce numero</div>
+        <div id="evidenceBox"></div>
+      </div>
+
+      <div class="card">
+        <h3>Explication</h3>
+        <div class="explanation-text" id="explanationText"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLUMN_LABELS = {
+  START_DATE: "Date",
+  A_MSISDN: "Numero",
+  CALL_TYPE: "Type",
+  DUREE_MINUTES: "Duree (min)",
+  AMOUNT: "Montant (DT)",
+  CHARGE_AMOUNT: "Montant (DT)",
+  DATA_VOLUME: "Volume (Ko)",
+  KEYWORD: "Service",
+  B_MSISDN: "Numero court"
+};
+
+const CONFIDENCE_LABELS = {
+  HIGH: "Confiance elevee",
+  MEDIUM: "Confiance moyenne",
+  LOW: "Confiance faible"
+};
+
+let authToken = null;
+let authUsername = null;
+let authRole = null;
+
+function formatCell(key, value) {
+  if (value === null || value === undefined) return "";
+  if (key === "START_DATE" && typeof value === "string") {
+    var datePart = value.split("T")[0];
+    var parts = datePart.split("-");
+    if (parts.length === 3) {
+      return parts[2] + "/" + parts[1] + "/" + parts[0];
+    }
+  }
+  return value;
+}
+
+async function login() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const statusEl = document.getElementById('loginStatus');
+  const btn = document.getElementById('loginBtn');
+
+  if (!username || !password) {
+    statusEl.innerHTML = '<span id="loginError">Veuillez saisir un nom d\'utilisateur et un mot de passe.</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.textContent = 'Connexion en cours...';
+
+  try {
+    const response = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      statusEl.innerHTML = '<span id="loginError">' + (errData.detail || 'Identifiants invalides.') + '</span>';
+      btn.disabled = false;
+      return;
+    }
+
+    const data = await response.json();
+    authToken = data.access_token;
+    authUsername = username;
+    authRole = data.role;
+
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('appBox').style.display = 'block';
+    document.getElementById('loggedInBar').style.display = 'block';
+    document.getElementById('loggedInUser').textContent = authUsername;
+    document.getElementById('loggedInRole').textContent = authRole;
+    statusEl.textContent = '';
+  } catch (err) {
+    statusEl.innerHTML = '<span id="loginError">Erreur de connexion au serveur: ' + err.message + '</span>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function logout() {
+  authToken = null;
+  authUsername = null;
+  authRole = null;
+  document.getElementById('loginBox').style.display = 'block';
+  document.getElementById('appBox').style.display = 'none';
+  document.getElementById('loggedInBar').style.display = 'none';
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('resultBox').style.display = 'none';
+  document.getElementById('complaintText').value = '';
+}
+
+async function submitComplaint() {
+  const text = document.getElementById('complaintText').value.trim();
+  if (!text) {
+    alert('Veuillez saisir le texte de la reclamation.');
+    return;
+  }
+
+  if (!authToken) {
+    alert('Session expiree. Veuillez vous reconnecter.');
+    logout();
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  const loading = document.getElementById('loadingMsg');
+  const resultBox = document.getElementById('resultBox');
+
+  btn.disabled = true;
+  loading.style.display = 'block';
+  resultBox.style.display = 'none';
+
+  try {
+    const response = await fetch('/investigate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + authToken
+      },
+      body: JSON.stringify({ text: text })
+    });
+
+    if (response.status === 401) {
+      alert('Session expiree ou invalide. Veuillez vous reconnecter.');
+      logout();
+      return;
+    }
+    if (response.status === 403) {
+      const errData = await response.json().catch(() => ({}));
+      alert('Acces refuse: ' + (errData.detail || 'action non autorisee.'));
+      return;
+    }
+
+    const data = await response.json();
+
+    document.getElementById('categoryBadge').textContent = data.classification?.category || 'INCONNU';
+    document.getElementById('msisdnValue').textContent = data.classification?.msisdn || 'Non detecte';
+
+    const confidenceBadge = document.getElementById('confidenceBadge');
+    const confidence = data.classification?.confidence || 'LOW';
+    confidenceBadge.textContent = CONFIDENCE_LABELS[confidence] || confidence;
+    confidenceBadge.className = 'confidence-badge confidence-' + confidence.toLowerCase();
+
+    const evidenceBox = document.getElementById('evidenceBox');
+    if (data.error) {
+      evidenceBox.innerHTML = '<span class="error-text">' + data.error + '</span>';
+    } else if (Array.isArray(data.evidence) && data.evidence.length > 0) {
+      const keys = Object.keys(data.evidence[0]);
+      let html = '<table><thead><tr>';
+      keys.forEach(k => html += '<th>' + (COLUMN_LABELS[k] || k) + '</th>');
+      html += '</tr></thead><tbody>';
+      data.evidence.forEach(row => {
+        html += '<tr>';
+        keys.forEach(k => html += '<td>' + formatCell(k, row[k]) + '</td>');
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      evidenceBox.innerHTML = html;
+    } else {
+      evidenceBox.innerHTML = '<span style="color:#666;">Aucune preuve trouvee pour cette periode.</span>';
+    }
+
+    document.getElementById('explanationText').textContent = data.explanation || 'Aucune explication disponible.';
+
+    resultBox.style.display = 'block';
+  } catch (err) {
+    alert('Erreur lors de la communication avec le serveur: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+</script>
+</body>
+</html>
