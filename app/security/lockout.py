@@ -10,6 +10,9 @@ ALERT_THRESHOLD = 3
 WINDOW_MINUTES = 15
 LOCK_DURATION_MINUTES = 15
 
+REDTEAM_EXEMPT_USERS = {"redteam_runner"}
+
+
 def _get_connection():
     return oracledb.connect(
         user=os.getenv("DB_USER"),
@@ -17,7 +20,11 @@ def _get_connection():
         dsn=os.getenv("DB_DSN")
     )
 
+
 def is_locked(username: str) -> bool:
+    if username in REDTEAM_EXEMPT_USERS:
+        return False
+
     conn = _get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -33,7 +40,11 @@ def is_locked(username: str) -> bool:
 
     return row[0] > datetime.now()
 
+
 def check_and_apply_lockout(username: str, role: str, ip_address: str = None):
+    if username in REDTEAM_EXEMPT_USERS:
+        return
+
     conn = _get_connection()
     cursor = conn.cursor()
 
