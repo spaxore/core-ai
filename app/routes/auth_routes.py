@@ -6,6 +6,7 @@ import oracledb
 
 from app.security.auth import verify_password, create_access_token
 from app.security.audit import log_event
+from app.security.lockout import is_locked, check_and_apply_login_lockout
 
 load_dotenv()
 
@@ -51,10 +52,17 @@ def login(request: LoginRequest, http_request: Request):
         log_event("LOGIN_FAILURE", username=request.username, role=role, details="Account disabled", ip_address=client_ip)
         raise HTTPException(status_code=403, detail="Account disabled")
 
+    if is_locked(request.username):
+        cursor.close()
+        conn.close()
+        log_event("LOGIN_FAILURE", username=request.username, role=role, details="Account temporarily locked", ip_address=client_ip)
+        raise HTTPException(status_code=403, detail="Account temporarily locked due to failed login attempts")
+
     if not verify_password(request.password, stored_hash):
         cursor.close()
         conn.close()
         log_event("LOGIN_FAILURE", username=request.username, role=role, details="Wrong password", ip_address=client_ip)
+        check_and_apply_login_lockout(request.username, ip_address=client_ip)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token(request.username, role)

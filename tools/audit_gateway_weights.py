@@ -3,7 +3,7 @@ from app.security.gateway import INJECTION_PATTERNS, BLOCK_THRESHOLD, inspect_pr
 
 # Minimal strings, each designed to trip exactly ONE pattern in isolation
 MINIMAL_TRIGGERS = {
-    r"ignore (all|any|previous|prior|the)( previous| prior| all| any)* instructions": "ignore all instructions",
+    r"ignore (all|any|previous|prior|the|every)( previous| prior| all| any| every)* (instructions|rules?)": "ignore all instructions",
     r"disregard (the|all|any) (above|previous|prior)": "disregard the above",
     r"you are now": "you are now",
     r"act as (a|an)": "act as a",

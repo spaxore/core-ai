@@ -1,7 +1,7 @@
 ﻿import re
 
 INJECTION_PATTERNS = [
-    (r"ignore (all|any|previous|prior|the)( previous| prior| all| any)* instructions", "DIRECT_INJECTION", 50),
+    (r"ignore (all|any|previous|prior|the|every)( previous| prior| all| any| every)* (instructions|rules?)", "DIRECT_INJECTION", 50),
     (r"disregard (the|all|any) (above|previous|prior)", "DIRECT_INJECTION", 50),
     (r"you are now", "ROLE_CONFUSION", 50),
     (r"act as (a|an)", "ROLE_CONFUSION", 50),
