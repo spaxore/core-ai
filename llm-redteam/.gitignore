@@ -1,0 +1,18 @@
+# Run outputs (regenerated each run, not source)
+results.json
+scored.json
+report.html
+results_*.json
+scored_*.json
+report_*.html
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# OS/editor junk
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
