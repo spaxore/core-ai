@@ -120,11 +120,29 @@
     margin-bottom: 10px;
     font-style: italic;
   }
+  .evidence-summary {
+    display: flex;
+    gap: 20px;
+    background: #eef3fb;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+  .evidence-summary .stat-value {
+    font-weight: 700;
+    color: #003876;
+  }
+  .evidence-table-wrapper {
+    max-height: 350px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 6px;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
-    margin-top: 4px;
   }
   th, td {
     text-align: left;
@@ -134,6 +152,9 @@
   th {
     color: #666;
     font-weight: 600;
+    position: sticky;
+    top: 0;
+    background: #f9fafb;
   }
   .explanation-text {
     font-size: 14px;
@@ -228,7 +249,11 @@
 
       <div class="card">
         <h3>Preuves recuperees</h3>
-        <div class="evidence-note">Donnees des 60 derniers jours pour ce numero</div>
+        <div style="margin-bottom:6px;">
+          <span class="confidence-badge" id="matchConfidenceBadge" style="display:none;"></span>
+        </div>
+        <div class="evidence-note" id="evidenceNote"></div>
+        <div class="evidence-summary" id="evidenceSummary" style="display:none;"></div>
         <div id="evidenceBox"></div>
       </div>
 
@@ -250,7 +275,8 @@ const COLUMN_LABELS = {
   CHARGE_AMOUNT: "Montant (DT)",
   DATA_VOLUME: "Volume (Ko)",
   KEYWORD: "Service",
-  B_MSISDN: "Numero court"
+  B_MSISDN: "Numero court",
+  _SOURCE: "Source reelle"
 };
 
 const CONFIDENCE_LABELS = {
@@ -386,12 +412,36 @@ async function submitComplaint() {
     confidenceBadge.textContent = CONFIDENCE_LABELS[confidence] || confidence;
     confidenceBadge.className = 'confidence-badge confidence-' + confidence.toLowerCase();
 
+    const matchConfidenceBadge = document.getElementById('matchConfidenceBadge');
+    if (data.match_confidence) {
+      matchConfidenceBadge.textContent = CONFIDENCE_LABELS[data.match_confidence] || data.match_confidence;
+      matchConfidenceBadge.className = 'confidence-badge confidence-' + data.match_confidence.toLowerCase();
+      matchConfidenceBadge.style.display = 'inline-block';
+    } else {
+      matchConfidenceBadge.style.display = 'none';
+    }
+
+    const evidenceNote = document.getElementById('evidenceNote');
+    evidenceNote.textContent = data.search_note || 'Recherche sur la periode ' + (data.classification?.event_date ? 'ancree sur le ' + data.classification.event_date : 'par defaut') + '.';
+
     const evidenceBox = document.getElementById('evidenceBox');
+    const evidenceSummary = document.getElementById('evidenceSummary');
     if (data.error) {
+      evidenceSummary.style.display = 'none';
       evidenceBox.innerHTML = '<span class="error-text">' + data.error + '</span>';
     } else if (Array.isArray(data.evidence) && data.evidence.length > 0) {
       const keys = Object.keys(data.evidence[0]);
-      let html = '<table><thead><tr>';
+
+      const montantKey = keys.includes('CHARGE_AMOUNT') ? 'CHARGE_AMOUNT' : (keys.includes('AMOUNT') ? 'AMOUNT' : null);
+      let summaryHtml = '<div>Enregistrements: <span class="stat-value">' + data.evidence.length + '</span></div>';
+      if (montantKey) {
+        const total = data.evidence.reduce((sum, row) => sum + (row[montantKey] || 0), 0);
+        summaryHtml += '<div>Montant total: <span class="stat-value">' + total.toFixed(2) + ' DT</span></div>';
+      }
+      evidenceSummary.innerHTML = summaryHtml;
+      evidenceSummary.style.display = 'flex';
+
+      let html = '<div class="evidence-table-wrapper"><table><thead><tr>';
       keys.forEach(k => html += '<th>' + (COLUMN_LABELS[k] || k) + '</th>');
       html += '</tr></thead><tbody>';
       data.evidence.forEach(row => {
@@ -399,9 +449,10 @@ async function submitComplaint() {
         keys.forEach(k => html += '<td>' + formatCell(k, row[k]) + '</td>');
         html += '</tr>';
       });
-      html += '</tbody></table>';
+      html += '</tbody></table></div>';
       evidenceBox.innerHTML = html;
     } else {
+      evidenceSummary.style.display = 'none';
       evidenceBox.innerHTML = '<span style="color:#666;">Aucune preuve trouvee pour cette periode.</span>';
     }
 

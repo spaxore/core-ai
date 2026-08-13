@@ -19,6 +19,13 @@ logs/
 .idea/
 Thumbs.db
 .DS_Store
+desktop.ini
+
+# Real customer CDR exports (PII, never commit)
+*.dsv
+
+# Stray/incomplete downloads
+*.crdownload
 
 # Local test/scratch scripts (optional — keep if you want these tracked instead)
 # unlock_user.py
