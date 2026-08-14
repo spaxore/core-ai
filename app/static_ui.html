@@ -82,6 +82,10 @@
   }
   button:hover { background: var(--tt-blue-dark); }
   button:disabled { background: var(--tt-gray); cursor: not-allowed; }
+  button.btn-outline {
+    background: var(--tt-card); color: var(--tt-blue-dark); border: 1px solid var(--tt-border);
+  }
+  button.btn-outline:hover { background: var(--tt-surface); }
 
   /* ---- Authenticated shell ---- */
   #appShell { display: none; min-height: 100vh; }
@@ -141,12 +145,13 @@
   }
   textarea:focus { outline: none; border-color: var(--tt-blue); background: #fff; box-shadow: 0 0 0 3px var(--tt-blue-soft); }
 
-  /* ---- In-progress state: one honest indicator, no fake stages ---- */
+  /* ---- In-progress state: real pipeline phases, not fake generic stages ---- */
   .investigating-block {
     display: none; margin-top: 16px; padding: 16px 18px; background: var(--tt-blue-soft);
-    border-radius: 10px; align-items: center; gap: 12px;
+    border-radius: 10px; flex-direction: column; gap: 14px;
   }
   .investigating-block.active { display: flex; }
+  .investigating-header { display: flex; align-items: center; gap: 12px; }
   .spinner {
     width: 20px; height: 20px; border: 2.5px solid rgba(25,120,182,0.25); border-top-color: var(--tt-blue);
     border-radius: 50%; flex-shrink: 0; animation: spin 0.8s linear infinite;
@@ -155,6 +160,47 @@
   .investigating-text .t { font-size: 13px; font-weight: 600; color: var(--tt-blue-dark); }
   .investigating-text .d { font-size: 11.5px; color: var(--tt-text-soft); margin-top: 1px; }
   textarea:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Pipeline trace -- each dot is one real tier the investigation
+     services actually tried (targeted search, broadened, cross-source
+     fallback, ...), built dynamically from /investigate's own
+     response ("pipeline"), not a fixed generic list -- so the row
+     count and content vary per investigation, matching what really
+     happened. All rows render gray/pending immediately; each flips to
+     its real resolved state in sequence with a short delay, so the
+     agent watches real, already-known outcomes settle rather than a
+     generic spinner. Four states:
+     - step-ok (green check): this tier actually found something
+     - step-empty (solid gray, dash): this tier ran and found nothing --
+       an honest, correct outcome, not a failure, so it's gray, not red
+     - step-error (red X): a real exception stopped the pipeline here
+     - step-skip (dashed outline, muted): never run at all, because an
+       earlier, more specific tier already matched -- shown explicitly
+       so the agent sees the whole potential path, not just what ran */
+  .pipeline-card { display: none; margin-top: 16px; }
+  .pipeline-card h3 { margin-bottom: 14px; }
+  .pipeline-trace { display: flex; flex-direction: column; gap: 0; }
+  .pipeline-row { display: flex; gap: 12px; position: relative; padding: 6px 0; }
+  .pipeline-row:not(:last-child)::before {
+    content: ''; position: absolute; left: 11px; top: 29px; bottom: 0px; width: 2px; background: var(--tt-border);
+  }
+  .pipeline-dot {
+    width: 23px; height: 23px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center;
+    justify-content: center; z-index: 1; background: var(--tt-card); border: 2px dashed var(--tt-border);
+    margin-top: 2px; transition: background 0.35s ease, border-color 0.35s ease;
+  }
+  .pipeline-dot svg { width: 11px; height: 11px; stroke: #fff; }
+  .pipeline-dot.step-ok { background: var(--tt-green); border-color: var(--tt-green); }
+  .pipeline-dot.step-error { background: var(--tt-red); border-color: var(--tt-red); }
+  .pipeline-dot.step-empty { background: var(--tt-gray); border-color: var(--tt-gray); }
+  .pipeline-dot.step-skip { background: var(--tt-card); border-color: var(--tt-border); }
+  .pipeline-dot.step-skip svg { stroke: var(--tt-text-soft); }
+  .pipeline-label-text { font-size: 12.5px; font-weight: 500; color: var(--tt-text-soft); transition: color 0.35s ease; }
+  .pipeline-row.step-ok .pipeline-label-text, .pipeline-row.step-error .pipeline-label-text, .pipeline-row.step-empty .pipeline-label-text {
+    color: var(--tt-text); font-weight: 600;
+  }
+  .pipeline-row.step-skip .pipeline-label-text { color: var(--tt-text-soft); font-style: italic; }
+  .pipeline-detail { font-size: 11.5px; color: var(--tt-text-soft); margin-top: 1px; }
 
   .result { margin-top: 16px; display: none; }
 
@@ -350,14 +396,22 @@
           <textarea id="complaintText" placeholder="Exemple: Client 21693926356 se plaint que son solde diminue chaque jour a cause d'un abonnement SMS+..."></textarea>
           <br>
           <button id="submitBtn" onclick="submitComplaint()" style="margin-top:12px;">Analyser la réclamation</button>
+          <button id="resetBtn" class="btn-outline" onclick="resetInvestigationForm()" style="margin-top:12px; margin-left:8px; display:none;">Nouvelle investigation</button>
 
           <div class="investigating-block" id="investigatingBlock">
-            <div class="spinner"></div>
-            <div class="investigating-text">
-              <div class="t">Analyse en cours…</div>
-              <div class="d">Interrogation des données réelles du client. Cela prend généralement quelques secondes.</div>
+            <div class="investigating-header">
+              <div class="spinner"></div>
+              <div class="investigating-text">
+                <div class="t">Analyse en cours…</div>
+                <div class="d">Interrogation des données réelles du client. Cela prend généralement quelques secondes.</div>
+              </div>
             </div>
           </div>
+        </div>
+
+        <div class="card pipeline-card" id="pipelineCard">
+          <h3>Parcours de l'investigation</h3>
+          <div class="pipeline-trace" id="pipelineTrace"></div>
         </div>
 
         <div class="result" id="resultBox">
@@ -869,6 +923,69 @@ function goBackFromDetail() {
   showView(lastDetailOrigin === 'history' ? 'history' : 'new');
 }
 
+const PIPELINE_ICON_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
+const PIPELINE_ICON_ERROR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+const PIPELINE_ICON_DASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 12h8"/></svg>';
+const PIPELINE_STATUS_STYLE = {
+  ok: { cls: 'step-ok', icon: PIPELINE_ICON_OK },
+  error: { cls: 'step-error', icon: PIPELINE_ICON_ERROR },
+  empty: { cls: 'step-empty', icon: PIPELINE_ICON_DASH },
+  skip: { cls: 'step-skip', icon: PIPELINE_ICON_DASH },
+};
+
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+// Rows are built fresh from the real trace /investigate just returned --
+// the step count and content vary per investigation (a targeted search
+// that matched immediately shows fewer rows than one that had to
+// broaden and fall back across sources), so this is rendered dynamically
+// rather than a fixed list of generic phases.
+function renderPipelineTrace(steps) {
+  const container = document.getElementById('pipelineTrace');
+  container.innerHTML = steps.map((step, i) => `
+    <div class="pipeline-row" id="pipeline-row-${i}">
+      <div class="pipeline-dot" id="pipeline-dot-${i}"></div>
+      <div>
+        <div class="pipeline-label-text">${step.label}</div>
+        ${step.detail ? `<div class="pipeline-detail">${step.detail}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+// Every step here already happened by the time this runs -- /investigate
+// is a single synchronous call, not a live stream. This replays the real,
+// already-known per-tier outcomes at a readable pace (gray -> green/red)
+// instead of a generic spinner, so the agent can see exactly which tier
+// was tried and what it found, without inventing any progress that
+// didn't happen.
+async function animatePipelineTrace(steps) {
+  renderPipelineTrace(steps);
+  await sleep(400);
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const dot = document.getElementById('pipeline-dot-' + i);
+    const row = document.getElementById('pipeline-row-' + i);
+    if (!dot || !row) continue;
+    const style = PIPELINE_STATUS_STYLE[step.status] || PIPELINE_STATUS_STYLE.empty;
+    dot.className = 'pipeline-dot ' + style.cls;
+    dot.innerHTML = style.icon;
+    row.className = 'pipeline-row ' + style.cls;
+    await sleep(600);
+  }
+}
+
+// Clears the form and hides the previous result/pipeline so the agent can
+// start a new investigation without a page reload -- reloading would drop
+// the auth token and force a re-login, which isn't what's wanted here.
+function resetInvestigationForm() {
+  document.getElementById('complaintText').value = '';
+  document.getElementById('resultBox').style.display = 'none';
+  document.getElementById('pipelineCard').style.display = 'none';
+  document.getElementById('pipelineTrace').innerHTML = '';
+  document.getElementById('resetBtn').style.display = 'none';
+  document.getElementById('complaintText').focus();
+}
+
 async function submitComplaint() {
   const text = document.getElementById('complaintText').value.trim();
   if (!text) {
@@ -891,6 +1008,7 @@ async function submitComplaint() {
   textarea.disabled = true;
   investigatingBlock.classList.add('active');
   resultBox.style.display = 'none';
+  document.getElementById('pipelineCard').style.display = 'none';
 
   try {
     const response = await fetch('/investigate', {
@@ -904,16 +1022,22 @@ async function submitComplaint() {
 
     if (response.status === 401) {
       alert('Session expiree ou invalide. Veuillez vous reconnecter.');
+      document.getElementById('pipelineCard').style.display = 'none';
       logout();
       return;
     }
     if (response.status === 403) {
       const errData = await response.json().catch(() => ({}));
       alert('Acces refuse: ' + (errData.detail || 'action non autorisee.'));
+      document.getElementById('pipelineCard').style.display = 'none';
       return;
     }
 
     const data = await response.json();
+
+    investigatingBlock.classList.remove('active');
+    document.getElementById('pipelineCard').style.display = 'block';
+    await animatePipelineTrace(data.pipeline || []);
 
     document.getElementById('categoryBadge').textContent = data.classification?.category || 'INCONNU';
     document.getElementById('msisdnValue').textContent = data.classification?.msisdn || 'Non detecte';
@@ -956,6 +1080,7 @@ async function submitComplaint() {
     document.getElementById('explanationText').textContent = data.explanation || 'Aucune explication disponible.';
 
     resultBox.style.display = 'block';
+    document.getElementById('resetBtn').style.display = 'inline-block';
 
     // Keep the history, stats, and recent-cards views current in the
     // background, so switching to them after investigating several cases

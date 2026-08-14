@@ -1,5 +1,11 @@
 from app.database.oracle import get_connection
-from app.services.investigation_helpers import find_best_match
+from app.services.investigation_helpers import find_best_match, skip_trace_step
+from app.services.cross_source_search import CROSS_SOURCE_TIER_LABELS
+
+
+def _skip_cross_source(trace):
+    trace.append(skip_trace_step(CROSS_SOURCE_TIER_LABELS["cross_source_single_day"]))
+    trace.append(skip_trace_step(CROSS_SOURCE_TIER_LABELS["cross_source_broadened"]))
 
 
 def _run_sms_query(cursor, msisdn, start_date, end_date):
@@ -41,6 +47,7 @@ def investigate_sms_vas(msisdn, start_date, end_date, target_amount=None, anchor
 
     connection = get_connection()
     cursor = connection.cursor()
+    trace = []
 
     tier1_evidence = _run_sms_query(cursor, msisdn, single_day, single_day)
 
@@ -52,10 +59,15 @@ def investigate_sms_vas(msisdn, start_date, end_date, target_amount=None, anchor
             "search_tier": "narrow_single_day",
             "da_value_used": None,
             "note": None,
+            "trace": trace,
         }
 
     match = find_best_match(tier1_evidence, target_amount)
     if match is not None:
+        trace.append({"label": "Recherche ciblée — jour même", "status": "ok",
+                       "detail": f"Correspondance trouvée via {match['match_type']}"})
+        trace.append(skip_trace_step("Recherche élargie — période complète"))
+        _skip_cross_source(trace)
         cursor.close()
         connection.close()
         return {
@@ -65,7 +77,10 @@ def investigate_sms_vas(msisdn, start_date, end_date, target_amount=None, anchor
             "confidence": match["confidence"],
             "evidence_coverage": match["evidence_coverage"],
             "note": f"Matched via {match['match_type']} on {single_day}",
+            "trace": trace,
         }
+    trace.append({"label": "Recherche ciblée — jour même", "status": "empty",
+                   "detail": "N'explique pas le montant déclaré"})
 
     tier2_evidence = _run_sms_query(cursor, msisdn, start_date, end_date)
     cursor.close()
@@ -73,6 +88,9 @@ def investigate_sms_vas(msisdn, start_date, end_date, target_amount=None, anchor
 
     match2 = find_best_match(tier2_evidence, target_amount)
     if match2 is not None:
+        trace.append({"label": "Recherche élargie — période complète", "status": "ok",
+                       "detail": f"Correspondance trouvée via {match2['match_type']}"})
+        _skip_cross_source(trace)
         return {
             "evidence": match2["matched_rows"],
             "search_tier": "broadened_date_range",
@@ -80,10 +98,14 @@ def investigate_sms_vas(msisdn, start_date, end_date, target_amount=None, anchor
             "confidence": match2["confidence"],
             "evidence_coverage": match2["evidence_coverage"],
             "note": f"Single-day search did not explain the stated amount. Broadened to {start_date}..{end_date} matched via {match2['match_type']}.",
+            "trace": trace,
         }
+    trace.append({"label": "Recherche élargie — période complète", "status": "empty",
+                   "detail": "N'explique toujours pas le montant déclaré"})
 
     from app.services.cross_source_search import try_cross_source_fallback
     return try_cross_source_fallback(
         msisdn, start_date, end_date, target_amount, anchor_date,
         f"Neither the single-day search, the broadened window {start_date}..{end_date}, nor any other source found evidence explaining the stated amount of {target_amount} DT. Manual verification recommended.",
+        trace=trace,
     )

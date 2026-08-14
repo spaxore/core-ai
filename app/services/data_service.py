@@ -1,7 +1,13 @@
 from datetime import timedelta
 
 from app.database.oracle import get_connection
-from app.services.investigation_helpers import find_best_match
+from app.services.investigation_helpers import find_best_match, skip_trace_step
+from app.services.cross_source_search import CROSS_SOURCE_TIER_LABELS
+
+
+def _skip_cross_source(trace):
+    trace.append(skip_trace_step(CROSS_SOURCE_TIER_LABELS["cross_source_single_day"]))
+    trace.append(skip_trace_step(CROSS_SOURCE_TIER_LABELS["cross_source_broadened"]))
 
 # DATA_VOLUME is stored in KB (inferred from real imported CDR data --
 # single-session records for a heavy data user cluster around ~29,569,
@@ -169,6 +175,7 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
 
     connection = get_connection()
     cursor = connection.cursor()
+    trace = []
 
     if da_value is not None:
         tier1_evidence = _run_data_query(cursor, msisdn, single_day, single_day, da_value)
@@ -181,10 +188,17 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
                 "search_tier": "narrow_single_day_flex_filtered",
                 "da_value_used": da_value,
                 "note": None,
+                "trace": trace,
             }
 
         match = find_best_match(tier1_evidence, target_volume_kb, amount_field="DATA_VOLUME")
         if match is not None:
+            trace.append({"label": f"Recherche ciblée — jour même, bucket {da_value}", "status": "ok",
+                           "detail": f"Correspondance trouvée via {match['match_type']}"})
+            trace.append(skip_trace_step("Recherche élargie — jour même, tous buckets"))
+            trace.append(skip_trace_step(f"Recherche élargie — cycle de facturation du bucket {da_value}"))
+            trace.append(skip_trace_step("Recherche élargie — période complète"))
+            _skip_cross_source(trace)
             cursor.close()
             connection.close()
             return {
@@ -194,11 +208,19 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
                 "confidence": match["confidence"],
                 "evidence_coverage": match["evidence_coverage"],
                 "note": f"Matched via {match['match_type']} on {single_day} within FLEX_FLD2={da_value}",
+                "trace": trace,
             }
+        trace.append({"label": f"Recherche ciblée — jour même, bucket {da_value}", "status": "empty",
+                       "detail": "N'explique pas le volume déclaré"})
 
         tier2_evidence = _run_data_query(cursor, msisdn, single_day, single_day, None)
         match2 = find_best_match(tier2_evidence, target_volume_kb, amount_field="DATA_VOLUME")
         if match2 is not None:
+            trace.append({"label": "Recherche élargie — jour même, tous buckets", "status": "ok",
+                           "detail": f"Correspondance trouvée via {match2['match_type']}"})
+            trace.append(skip_trace_step(f"Recherche élargie — cycle de facturation du bucket {da_value}"))
+            trace.append(skip_trace_step("Recherche élargie — période complète"))
+            _skip_cross_source(trace)
             cursor.close()
             connection.close()
             return {
@@ -208,13 +230,20 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
                 "confidence": match2["confidence"],
                 "evidence_coverage": match2["evidence_coverage"],
                 "note": f"FLEX_FLD2={da_value}-filtered search did not explain the stated volume. Broadened to full day matched via {match2['match_type']}.",
+                "trace": trace,
             }
+        trace.append({"label": "Recherche élargie — jour même, tous buckets", "status": "empty",
+                       "detail": "N'explique toujours pas le volume déclaré"})
 
         cycle_start = _find_cycle_start(cursor, msisdn, da_value, single_day)
         if cycle_start is not None and cycle_start < single_day:
             tier3_evidence = _run_data_query(cursor, msisdn, cycle_start, single_day, da_value)
             match3 = find_best_match(tier3_evidence, target_volume_kb, amount_field="DATA_VOLUME")
             if match3 is not None:
+                trace.append({"label": f"Recherche élargie — cycle de facturation du bucket {da_value}", "status": "ok",
+                               "detail": f"Correspondance trouvée via {match3['match_type']} ({cycle_start}..{single_day})"})
+                trace.append(skip_trace_step("Recherche élargie — période complète"))
+                _skip_cross_source(trace)
                 cursor.close()
                 connection.close()
                 return {
@@ -224,7 +253,10 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
                     "confidence": match3["confidence"],
                     "evidence_coverage": match3["evidence_coverage"],
                     "note": f"Single-day search did not explain the stated volume. Broadened to the DA{da_value} bucket's own billing cycle ({cycle_start}..{single_day}, detected from a ledger reset in FLEX_FLD1/FLEX_FLD3) matched via {match3['match_type']}.",
+                    "trace": trace,
                 }
+            trace.append({"label": f"Recherche élargie — cycle de facturation du bucket {da_value}", "status": "empty",
+                           "detail": "N'explique toujours pas le volume déclaré"})
 
         tier4_evidence = _run_data_query(cursor, msisdn, start_date, end_date, None)
         cursor.close()
@@ -232,6 +264,9 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
 
         match4 = find_best_match(tier4_evidence, target_volume_kb, amount_field="DATA_VOLUME")
         if match4 is not None:
+            trace.append({"label": "Recherche élargie — période complète", "status": "ok",
+                           "detail": f"Correspondance trouvée via {match4['match_type']}"})
+            _skip_cross_source(trace)
             return {
                 "evidence": match4["matched_rows"],
                 "search_tier": "broadened_date_range",
@@ -239,12 +274,16 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
                 "confidence": match4["confidence"],
                 "evidence_coverage": match4["evidence_coverage"],
                 "note": f"Single-day search and the DA{da_value} bucket's own cycle window did not explain the stated volume. Broadened to {start_date}..{end_date} matched via {match4['match_type']}.",
+                "trace": trace,
             }
+        trace.append({"label": "Recherche élargie — période complète", "status": "empty",
+                       "detail": "N'explique toujours pas le volume déclaré"})
 
         from app.services.cross_source_search import try_cross_source_fallback
         return try_cross_source_fallback(
             msisdn, start_date, end_date, target_amount, anchor_date,
             f"Neither the single-day FLEX_FLD2={da_value}-filtered search, the DA{da_value} bucket's own cycle window, the full window {start_date}..{end_date}, nor any other source found evidence explaining the stated volume of {target_volume_gb} GB. Manual verification recommended.",
+            trace=trace,
         )
 
     evidence = _run_data_query(cursor, msisdn, single_day, single_day, None)
@@ -257,10 +296,15 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
             "search_tier": "single_day_no_flex_named",
             "da_value_used": None,
             "note": None,
+            "trace": trace,
         }
 
     match = find_best_match(evidence, target_volume_kb, amount_field="DATA_VOLUME")
     if match is not None:
+        trace.append({"label": "Recherche ciblée — jour même", "status": "ok",
+                       "detail": f"Correspondance trouvée via {match['match_type']}"})
+        trace.append(skip_trace_step("Recherche élargie — période complète"))
+        _skip_cross_source(trace)
         cursor.close()
         connection.close()
         return {
@@ -270,7 +314,10 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
             "confidence": match["confidence"],
             "evidence_coverage": match["evidence_coverage"],
             "note": f"Matched via {match['match_type']}",
+            "trace": trace,
         }
+    trace.append({"label": "Recherche ciblée — jour même", "status": "empty",
+                   "detail": "N'explique pas le volume déclaré"})
 
     tier2_evidence = _run_data_query(cursor, msisdn, start_date, end_date, None)
     cursor.close()
@@ -278,6 +325,9 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
 
     match2 = find_best_match(tier2_evidence, target_volume_kb, amount_field="DATA_VOLUME")
     if match2 is not None:
+        trace.append({"label": "Recherche élargie — période complète", "status": "ok",
+                       "detail": f"Correspondance trouvée via {match2['match_type']}"})
+        _skip_cross_source(trace)
         return {
             "evidence": match2["matched_rows"],
             "search_tier": "broadened_date_range",
@@ -285,10 +335,14 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
             "confidence": match2["confidence"],
             "evidence_coverage": match2["evidence_coverage"],
             "note": f"Single day did not explain the stated volume. Broadened to {start_date}..{end_date} matched via {match2['match_type']}.",
+            "trace": trace,
         }
+    trace.append({"label": "Recherche élargie — période complète", "status": "empty",
+                   "detail": "N'explique toujours pas le volume déclaré"})
 
     from app.services.cross_source_search import try_cross_source_fallback
     return try_cross_source_fallback(
         msisdn, start_date, end_date, target_amount, anchor_date,
         f"No evidence found explaining the stated volume of {target_volume_gb} GB in single day {single_day}, broadened window {start_date}..{end_date}, or any other source. Manual verification recommended.",
+        trace=trace,
     )

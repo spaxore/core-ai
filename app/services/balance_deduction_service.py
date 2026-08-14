@@ -16,8 +16,9 @@ def investigate_balance_deduction(msisdn, start_date, end_date, target_amount=No
     enough evidence to support this ticket" -- rather than presenting
     an unrelated total as the answer.
     """
-    result = search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date)
+    result, trace = search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date)
     if result is not None:
+        result["trace"] = trace
         return result
 
     if target_amount is None:
@@ -26,6 +27,7 @@ def investigate_balance_deduction(msisdn, start_date, end_date, target_amount=No
             "search_tier": "no_target_amount",
             "da_value_used": None,
             "note": "No DT amount could be extracted from the complaint to search for.",
+            "trace": trace,
         }
 
     return {
@@ -33,4 +35,5 @@ def investigate_balance_deduction(msisdn, start_date, end_date, target_amount=No
         "search_tier": "not_found",
         "da_value_used": None,
         "note": f"Checked voice, data, SMS/VAS and SOS credit, single day and broadened window {start_date}..{end_date} -- nothing explains the stated amount of {target_amount} DT. Not enough evidence to support this ticket; manual verification recommended.",
+        "trace": trace,
     }

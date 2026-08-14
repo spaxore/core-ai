@@ -31,6 +31,11 @@ from app.services.investigation_helpers import find_best_match, compute_evidence
 
 SOURCES = ["VOICE", "DATA", "SMS_VAS", "SOS_CREDIT"]
 CONFIDENCE_RANK = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+CONFIDENCE_LABEL_FR = {"HIGH": "confiance élevée", "MEDIUM": "confiance moyenne", "LOW": "confiance faible"}
+CROSS_SOURCE_TIER_LABELS = {
+    "cross_source_single_day": "Recherche multi-sources — jour même",
+    "cross_source_broadened": "Recherche multi-sources — période élargie",
+}
 
 
 def _query_source(cursor, source, msisdn, start_date, end_date):
@@ -52,19 +57,24 @@ def _query_source(cursor, source, msisdn, start_date, end_date):
 
 def search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date=None):
     """
-    Returns a result dict ({"evidence", "search_tier", "da_value_used",
-    "confidence", "note"}) if some source explains target_amount even
-    weakly, or None if nothing in any of the four sources does at all
-    -- callers decide how to report that (BALANCE_DEDUCTION reports it
-    as its own not_found; the other categories fold it into their
-    existing not_found note).
+    Returns (result, trace):
+    - result is a dict ({"evidence", "search_tier", "da_value_used",
+      "confidence", "note"}) if some source explains target_amount even
+      weakly, or None if nothing in any of the four sources does at all
+      -- callers decide how to report that (BALANCE_DEDUCTION reports it
+      as its own not_found; the other categories fold it into their
+      existing not_found note).
+    - trace is a list of {"label", "status", "detail"} steps, one per
+      tier actually run (single-day, then broadened), each recording
+      what was really found -- so the investigation-pipeline UI shows
+      what was searched, not just the final answer.
 
     Each matched row is tagged with "_SOURCE" so the evidence table is
     self-explanatory about which system actually caused the deduction,
     since that's very often not what the customer assumed.
     """
     if target_amount is None:
-        return None
+        return None, []
 
     single_day = anchor_date if anchor_date is not None else end_date
 
@@ -72,6 +82,7 @@ def search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date=
     cursor = connection.cursor()
 
     candidates = []
+    tier_hits = {"cross_source_single_day": [], "cross_source_broadened": []}
     for tier, s_date, e_date in (
         ("cross_source_single_day", single_day, single_day),
         ("cross_source_broadened", start_date, end_date),
@@ -81,12 +92,22 @@ def search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date=
             match = find_best_match(rows, target_amount)
             if match is not None:
                 candidates.append((tier, source, s_date, e_date, match))
+                tier_hits[tier].append((source, match["confidence"]))
 
     cursor.close()
     connection.close()
 
+    trace = []
+    for tier in ("cross_source_single_day", "cross_source_broadened"):
+        hits = tier_hits[tier]
+        if hits:
+            summary = ", ".join(f"{src} ({CONFIDENCE_LABEL_FR[conf]})" for src, conf in hits)
+            trace.append({"label": CROSS_SOURCE_TIER_LABELS[tier], "status": "ok", "detail": f"Piste(s) trouvée(s) : {summary}"})
+        else:
+            trace.append({"label": CROSS_SOURCE_TIER_LABELS[tier], "status": "empty", "detail": "Rien trouvé"})
+
     if not candidates:
-        return None
+        return None, trace
 
     tier, source, s_date, e_date, match = max(
         candidates,
@@ -106,7 +127,7 @@ def search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date=
     caveat = " -- treat as a possible lead, not a confirmed cause" if confidence == "LOW" else ""
     window_desc = str(single_day) if tier == "cross_source_single_day" else f"{s_date}..{e_date}"
 
-    return {
+    result = {
         "evidence": match["matched_rows"],
         "search_tier": tier,
         "da_value_used": None,
@@ -114,9 +135,10 @@ def search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date=
         "evidence_coverage": evidence_coverage,
         "note": f"Matched via {match['match_type']} in {source} ({window_desc}), confidence={confidence} -- not necessarily the mechanism the customer described{caveat}.",
     }
+    return result, trace
 
 
-def try_cross_source_fallback(msisdn, start_date, end_date, target_amount, anchor_date, own_not_found_note):
+def try_cross_source_fallback(msisdn, start_date, end_date, target_amount, anchor_date, own_not_found_note, trace=None):
     """
     Used by the other four categories as a final tier: if their own
     category-specific search didn't explain the amount, check whether
@@ -126,14 +148,20 @@ def try_cross_source_fallback(msisdn, start_date, end_date, target_amount, ancho
     source has been checked). Returns a result dict either way: the
     cross-source match if one exists (at whatever confidence), or the
     category's own not_found dict (unchanged) if nothing anywhere
-    explains the amount even weakly.
+    explains the amount even weakly. Either way, "trace" carries every
+    step actually run so far (the caller's own tiers) plus the
+    cross-source tiers this function adds.
     """
-    fallback = search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date)
+    trace = list(trace) if trace else []
+    fallback, cross_trace = search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date)
+    trace.extend(cross_trace)
     if fallback is not None:
+        fallback["trace"] = trace
         return fallback
     return {
         "evidence": [],
         "search_tier": "not_found",
         "da_value_used": None,
         "note": own_not_found_note,
+        "trace": trace,
     }

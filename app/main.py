@@ -79,11 +79,34 @@ def classify(complaint: dict, http_request: Request, user: dict = Depends(requir
 
     return result
 
+def _pipeline_step(label, status, detail=None):
+    return {"label": label, "status": status, "detail": detail}
+
+
+# Mirrors app/services/cross_source_search.py's own French confidence labels
+# rather than importing it directly (that module already imports plenty from
+# investigation_helpers.py; this keeps main.py's display strings independent
+# of a service-layer constant).
+_CONFIDENCE_LABEL_FR = {"HIGH": "confiance élevée", "MEDIUM": "confiance moyenne", "LOW": "confiance faible"}
+
+_DIAGNOSTIC_SYNTHESIS = {
+    "HIGH": "Confiance élevée — cause confirmée avec un haut degré de certitude.",
+    "MEDIUM": "Confiance moyenne — à confirmer si nécessaire.",
+    "LOW": "Confiance faible — signalé comme piste possible, pas comme cause confirmée.",
+}
+
+
 @app.post("/investigate")
 def investigate(complaint: dict, http_request: Request, user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
     text = complaint.get("text", "")
     client_ip = http_request.client.host
+    pipeline = []
 
+    # The Gateway scan and its outcome aren't shown in the pipeline UI --
+    # a real block raises HTTPException below and never reaches the
+    # frontend's pipeline rendering at all, and a pass is infrastructure
+    # plumbing the agent doesn't need to see; the pipeline is reserved for
+    # the AI's own classification/search/diagnosis work.
     scan = inspect_prompt(text)
     if scan["is_blocked"]:
         log_event(
@@ -113,6 +136,7 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
     event_date_str = classification.get("event_date")
 
     if not msisdn:
+        pipeline.append(_pipeline_step("Classification", "error", "Aucun numéro client détecté"))
         log_event(
             "INVESTIGATE",
             username=user["username"],
@@ -122,8 +146,14 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
         )
         return {
             "classification": classification,
+            "pipeline": pipeline,
             "error": "No MSISDN could be extracted from the complaint text."
         }
+    classification_confidence = classification.get("confidence")
+    pipeline.append(_pipeline_step(
+        "Classification", "ok",
+        f"{category} — {_CONFIDENCE_LABEL_FR.get(classification_confidence, classification_confidence)}"
+    ))
 
     # Anchor the investigation window on the date the complaint itself
     # states the event happened -- correct for both live complaints
@@ -156,6 +186,7 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
     )
 
     if investigation_result.get("error"):
+        pipeline.append(_pipeline_step("Recherche", "error", investigation_result["error"]))
         log_event(
             "INVESTIGATE",
             username=user["username"],
@@ -165,8 +196,15 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
         )
         return {
             "classification": classification,
+            "pipeline": pipeline,
             "error": investigation_result["error"]
         }
+
+    # The real tiers actually tried (narrow bucket, broadened, cross-source,
+    # ...) are recorded step by step inside the investigation service itself
+    # (see e.g. voice_service.py) -- this is what makes the pipeline view
+    # useful to a support agent instead of a single opaque "search ran" dot.
+    pipeline.extend(investigation_result.get("trace", []))
 
     evidence = investigation_result.get("evidence", [])
     search_tier = investigation_result.get("search_tier")
@@ -174,7 +212,30 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
     match_confidence = investigation_result.get("confidence")
     evidence_coverage = investigation_result.get("evidence_coverage")
 
-    explanation = explain_investigation(category, evidence, confidence=match_confidence)
+    try:
+        explanation = explain_investigation(category, evidence, confidence=match_confidence)
+    except Exception as exc:
+        pipeline.append(_pipeline_step("Génération de l'explication", "error", str(exc)))
+        log_event(
+            "INVESTIGATE",
+            username=user["username"],
+            role=user["role"],
+            details=f"category={category}, msisdn={msisdn} -> ERROR generating explanation: {exc}",
+            ip_address=client_ip
+        )
+        return {
+            "classification": classification,
+            "pipeline": pipeline,
+            "error": "The AI could not generate an explanation from the evidence found."
+        }
+
+    # "Not enough evidence" is an honest, correct outcome, not a pipeline
+    # failure -- it's gray (like an empty search tier), not red, and not
+    # green either since there's nothing positive to report.
+    if match_confidence:
+        pipeline.append(_pipeline_step("Diagnostic", "ok", _DIAGNOSTIC_SYNTHESIS[match_confidence]))
+    else:
+        pipeline.append(_pipeline_step("Diagnostic", "empty", "Aucune preuve trouvée — résultat honnête, vérification manuelle recommandée."))
 
     log_id = log_event(
         "INVESTIGATE",
@@ -194,6 +255,7 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
     return {
         "log_id": log_id,
         "classification": classification,
+        "pipeline": pipeline,
         "evidence": evidence,
         "search_tier": search_tier,
         "search_note": note,

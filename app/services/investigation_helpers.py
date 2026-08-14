@@ -17,6 +17,14 @@ everything).
 """
 
 
+def skip_trace_step(label, reason="Non exécutée — correspondance déjà trouvée"):
+    """A tier that was never run because an earlier, more specific tier
+    already matched -- shown explicitly (not just left out of the trace)
+    so the pipeline UI reflects the whole potential search path and
+    exactly how far it actually went."""
+    return {"label": label, "status": "skip", "detail": reason}
+
+
 def is_close_to_target(evidence, target_amount, amount_field="CHARGE_AMOUNT", tolerance_ratio=0.15, tolerance_floor=1.0):
     if target_amount is None or not evidence:
         return False

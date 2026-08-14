@@ -1,7 +1,13 @@
 from datetime import timedelta
 
 from app.database.oracle import get_connection
-from app.services.investigation_helpers import find_best_match
+from app.services.investigation_helpers import find_best_match, skip_trace_step
+from app.services.cross_source_search import CROSS_SOURCE_TIER_LABELS
+
+
+def _skip_cross_source(trace):
+    trace.append(skip_trace_step(CROSS_SOURCE_TIER_LABELS["cross_source_single_day"]))
+    trace.append(skip_trace_step(CROSS_SOURCE_TIER_LABELS["cross_source_broadened"]))
 
 # 5-day window, matching the real query the encadrant uses for voice
 # investigations (start_date BETWEEN '01/07/2026' AND '05/07/2026' --
@@ -95,6 +101,7 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
 
     connection = get_connection()
     cursor = connection.cursor()
+    trace = []
 
     if da_value is not None:
         tier1_evidence = _run_voice_query(cursor, msisdn, start_date, end_date, da_value)
@@ -107,10 +114,15 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
                 "search_tier": "narrow_da_filtered",
                 "da_value_used": da_value,
                 "note": None,
+                "trace": trace,
             }
 
         match = find_best_match(tier1_evidence, target_amount)
         if match is not None:
+            trace.append({"label": f"Recherche ciblée — bucket DA{da_value}", "status": "ok",
+                           "detail": f"Correspondance trouvée via {match['match_type']}"})
+            trace.append(skip_trace_step("Recherche élargie — tous buckets"))
+            _skip_cross_source(trace)
             cursor.close()
             connection.close()
             return {
@@ -120,7 +132,10 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
                 "confidence": match["confidence"],
                 "evidence_coverage": match["evidence_coverage"],
                 "note": f"Matched via {match['match_type']} within DA{da_value}",
+                "trace": trace,
             }
+        trace.append({"label": f"Recherche ciblée — bucket DA{da_value}", "status": "empty",
+                       "detail": "N'explique pas le montant déclaré"})
 
         tier2_evidence = _run_voice_query(cursor, msisdn, start_date, end_date, None)
         cursor.close()
@@ -128,6 +143,9 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
 
         match2 = find_best_match(tier2_evidence, target_amount)
         if match2 is not None:
+            trace.append({"label": "Recherche élargie — tous buckets", "status": "ok",
+                           "detail": f"Correspondance trouvée via {match2['match_type']}"})
+            _skip_cross_source(trace)
             return {
                 "evidence": match2["matched_rows"],
                 "search_tier": "broadened_no_da_filter",
@@ -135,12 +153,16 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
                 "confidence": match2["confidence"],
                 "evidence_coverage": match2["evidence_coverage"],
                 "note": f"DA{da_value}-filtered search did not explain the stated amount. Broadened search matched via {match2['match_type']}.",
+                "trace": trace,
             }
+        trace.append({"label": "Recherche élargie — tous buckets", "status": "empty",
+                       "detail": "N'explique toujours pas le montant déclaré"})
 
         from app.services.cross_source_search import try_cross_source_fallback
         return try_cross_source_fallback(
             msisdn, start_date, end_date, target_amount, anchor_date,
             f"Neither the DA{da_value}-filtered search, the broadened search, nor any other source (window {start_date}..{end_date}) found evidence explaining the stated amount of {target_amount} DT. Manual verification recommended.",
+            trace=trace,
         )
 
     evidence = _run_voice_query(cursor, msisdn, start_date, end_date, None)
@@ -153,10 +175,14 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
             "search_tier": "broad_no_da_named",
             "da_value_used": None,
             "note": None,
+            "trace": trace,
         }
 
     match = find_best_match(evidence, target_amount)
     if match is not None:
+        trace.append({"label": "Recherche — toutes les données voix", "status": "ok",
+                       "detail": f"Correspondance trouvée via {match['match_type']}"})
+        _skip_cross_source(trace)
         return {
             "evidence": match["matched_rows"],
             "search_tier": "broad_no_da_named",
@@ -164,10 +190,14 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
             "confidence": match["confidence"],
             "evidence_coverage": match["evidence_coverage"],
             "note": f"Matched via {match['match_type']}",
+            "trace": trace,
         }
+    trace.append({"label": "Recherche — toutes les données voix", "status": "empty",
+                   "detail": "N'explique pas le montant déclaré"})
 
     from app.services.cross_source_search import try_cross_source_fallback
     return try_cross_source_fallback(
         msisdn, start_date, end_date, target_amount, anchor_date,
         f"No evidence found explaining the stated amount of {target_amount} DT in window {start_date}..{end_date}, in voice or any other source. Manual verification recommended.",
+        trace=trace,
     )
