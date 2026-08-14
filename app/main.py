@@ -1,13 +1,15 @@
 from fastapi import FastAPI, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+from typing import Optional
 from app.ai.ollama_client import ask_ollama
 from app.ai.classifier import classify_complaint
 from app.ai.explainer import explain_investigation
-from app.ai.case_memory import save_verified_case
+from app.ai.case_memory import save_verified_case, update_case_status, VALID_STATUSES
 from app.services.router import run_investigation
+from app.services.investigation_results import save_investigation_result, get_investigation_result
 from app.security.dependencies import get_current_user, require_role
-from app.security.audit import get_recent_events
+from app.security.audit import get_recent_events, get_investigation_history, get_investigation_stats, get_investigation_summary
 from app.security.audit import log_event
 from app.security.gateway import inspect_prompt
 from app.security.lockout import check_and_apply_lockout
@@ -170,23 +172,33 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
     search_tier = investigation_result.get("search_tier")
     note = investigation_result.get("note")
     match_confidence = investigation_result.get("confidence")
+    evidence_coverage = investigation_result.get("evidence_coverage")
 
     explanation = explain_investigation(category, evidence, confidence=match_confidence)
 
-    log_event(
+    log_id = log_event(
         "INVESTIGATE",
         username=user["username"],
         role=user["role"],
-        details=f"category={category}, msisdn={msisdn}, da_value={da_value}, target_amount={target_amount}, target_volume_gb={target_volume_gb}, anchor={anchor_date}, search_tier={search_tier}, match_confidence={match_confidence}, rows_returned={len(evidence) if evidence else 0}",
+        details=f"category={category}, msisdn={msisdn}, da_value={da_value}, target_amount={target_amount}, target_volume_gb={target_volume_gb}, anchor={anchor_date}, search_tier={search_tier}, match_confidence={match_confidence}, evidence_coverage={evidence_coverage}, rows_returned={len(evidence) if evidence else 0}",
         ip_address=client_ip
     )
 
+    # Only persist a real "case file" when there's actual evidence to
+    # reopen later -- a not_found result has nothing beyond what the
+    # history row already shows, and persisting one would let the detail
+    # view fake a page for an empty result.
+    if evidence:
+        save_investigation_result(log_id, explanation, note, evidence)
+
     return {
+        "log_id": log_id,
         "classification": classification,
         "evidence": evidence,
         "search_tier": search_tier,
         "search_note": note,
         "match_confidence": match_confidence,
+        "evidence_coverage": evidence_coverage,
         "anchor_date": anchor_date.isoformat(),
         "explanation": explanation
     }
@@ -195,13 +207,33 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
 class VerifyCaseRequest(BaseModel):
     complaint_text: str
     category: str
-    msisdn: str = None
-    da_value: str = None
+    msisdn: Optional[str] = None
+    da_value: Optional[str] = None
 
 
 @app.post("/verify-case")
 def verify_case(payload: VerifyCaseRequest, http_request: Request, user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
     client_ip = http_request.client.host
+
+    scan = inspect_prompt(payload.complaint_text)
+    if scan["is_blocked"]:
+        log_event(
+            "SECURITY_ALERT",
+            username=user["username"],
+            role=user["role"],
+            details=f"BLOCKED verify-case: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={payload.complaint_text}",
+            ip_address=client_ip
+        )
+        check_and_apply_lockout(user["username"], user["role"], client_ip)
+        raise HTTPException(status_code=403, detail="Request blocked by security gateway")
+    elif scan["risk_score"] > 0:
+        log_event(
+            "SECURITY_FLAG",
+            username=user["username"],
+            role=user["role"],
+            details=f"FLAGGED verify-case: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={payload.complaint_text}",
+            ip_address=client_ip
+        )
 
     save_verified_case(
         complaint_text=payload.complaint_text,
@@ -222,6 +254,86 @@ def verify_case(payload: VerifyCaseRequest, http_request: Request, user: dict = 
     return {"status": "saved"}
 
 
+class UpdateCaseStatusRequest(BaseModel):
+    status: str
+
+
+@app.patch("/verify-case/{case_id}/status")
+def verify_case_status(case_id: int, payload: UpdateCaseStatusRequest, http_request: Request,
+                        user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
+    """
+    Lets a reviewer move a previously-saved verified case to a different
+    status after the fact -- e.g. "rejected" once a precedent turns out to
+    be a coincidental match that should stop being used by case_memory.py's
+    retrieval (see fetch_verified_cases), or "corrected" once a human fixes
+    its category. This is the whole point of the STATUS field: without it,
+    every row in TT_AI_VERIFIED_CASES looks equally trustworthy forever,
+    even after someone learns otherwise.
+    """
+    client_ip = http_request.client.host
+
+    if payload.status not in VALID_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid status '{payload.status}'. Must be one of: {sorted(VALID_STATUSES)}"
+        )
+
+    updated = update_case_status(case_id, payload.status)
+    if not updated:
+        raise HTTPException(status_code=404, detail=f"No verified case found with id {case_id}")
+
+    log_event(
+        "VERIFY_CASE_STATUS_UPDATE",
+        username=user["username"],
+        role=user["role"],
+        details=f"case_id={case_id} -> status={payload.status}",
+        ip_address=client_ip
+    )
+
+    return {"case_id": case_id, "status": payload.status}
+
+
 @app.get("/admin/audit-log")
 def audit_log(limit: int = 20, user: dict = Depends(require_role("SECURITY_ANALYST"))):
     return {"events": get_recent_events(limit)}
+
+
+@app.get("/investigations/history")
+def investigation_history(limit: int = 50, category: Optional[str] = None, msisdn: Optional[str] = None,
+                           user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
+    """
+    Read-only list of past investigations, same role access as
+    /investigate itself -- an agent reviewing what's already been
+    checked doesn't need SECURITY_ANALYST clearance the way the raw
+    /admin/audit-log (which includes security events, not just
+    investigation outcomes) does.
+    """
+    return {"history": get_investigation_history(limit=limit, category=category, msisdn=msisdn)}
+
+
+@app.get("/investigations/stats")
+def investigation_stats(user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
+    """Today's count + a rough average-confidence indicator, for the New
+    Investigation view's empty-state stats strip."""
+    return get_investigation_stats()
+
+
+@app.get("/investigations/{log_id}")
+def investigation_detail(log_id: int, user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
+    """
+    The full, original result behind one history row -- the explanation
+    and evidence table as they actually were at investigate-time, not
+    regenerated or re-run. 404 for anything never persisted: either it
+    predates this feature, or it was a not_found result with no case
+    file to open in the first place (see the "if evidence:" guard in
+    /investigate).
+    """
+    result = get_investigation_result(log_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"No investigation result found for id {log_id}")
+
+    summary = get_investigation_summary(log_id)
+    if summary is None:
+        raise HTTPException(status_code=404, detail=f"No investigation result found for id {log_id}")
+
+    return {**summary, **result}

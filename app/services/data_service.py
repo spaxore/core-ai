@@ -192,6 +192,7 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
                 "search_tier": "narrow_single_day_flex_filtered",
                 "da_value_used": da_value,
                 "confidence": match["confidence"],
+                "evidence_coverage": match["evidence_coverage"],
                 "note": f"Matched via {match['match_type']} on {single_day} within FLEX_FLD2={da_value}",
             }
 
@@ -205,6 +206,7 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
                 "search_tier": "broadened_no_flex_filter",
                 "da_value_used": None,
                 "confidence": match2["confidence"],
+                "evidence_coverage": match2["evidence_coverage"],
                 "note": f"FLEX_FLD2={da_value}-filtered search did not explain the stated volume. Broadened to full day matched via {match2['match_type']}.",
             }
 
@@ -220,6 +222,7 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
                     "search_tier": "broadened_cycle_window",
                     "da_value_used": da_value,
                     "confidence": match3["confidence"],
+                    "evidence_coverage": match3["evidence_coverage"],
                     "note": f"Single-day search did not explain the stated volume. Broadened to the DA{da_value} bucket's own billing cycle ({cycle_start}..{single_day}, detected from a ledger reset in FLEX_FLD1/FLEX_FLD3) matched via {match3['match_type']}.",
                 }
 
@@ -234,6 +237,7 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
                 "search_tier": "broadened_date_range",
                 "da_value_used": None,
                 "confidence": match4["confidence"],
+                "evidence_coverage": match4["evidence_coverage"],
                 "note": f"Single-day search and the DA{da_value} bucket's own cycle window did not explain the stated volume. Broadened to {start_date}..{end_date} matched via {match4['match_type']}.",
             }
 
@@ -264,6 +268,7 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
             "search_tier": "single_day_no_flex_named",
             "da_value_used": None,
             "confidence": match["confidence"],
+            "evidence_coverage": match["evidence_coverage"],
             "note": f"Matched via {match['match_type']}",
         }
 
@@ -278,6 +283,7 @@ def investigate_data_usage(msisdn, start_date, end_date, da_value=None, target_v
             "search_tier": "broadened_date_range",
             "da_value_used": None,
             "confidence": match2["confidence"],
+            "evidence_coverage": match2["evidence_coverage"],
             "note": f"Single day did not explain the stated volume. Broadened to {start_date}..{end_date} matched via {match2['match_type']}.",
         }
 

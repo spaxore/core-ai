@@ -27,6 +27,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Mirrors the DB check constraint chk_verified_cases_status on
+# TT_AI_VERIFIED_CASES.STATUS -- kept in sync by hand since this is a
+# small, fixed vocabulary. ai_generated/human_reviewed/human_validated
+# describe how a case entered the table in the first place;
+# corrected/rejected are states a reviewer can move a case into later
+# (via update_case_status) once they've had a chance to check it against
+# what actually happened -- e.g. a precedent that turned out to be a
+# coincidental match, not a real one.
+VALID_STATUSES = {"ai_generated", "human_reviewed", "human_validated", "corrected", "rejected"}
+
 
 def _get_connection():
     return oracledb.connect(
@@ -51,11 +61,21 @@ def _jaccard(a, b):
 
 
 def fetch_verified_cases(limit=200):
+    """
+    Excludes rejected cases -- a reviewer marking a precedent "rejected"
+    (e.g. a coincidental match that shouldn't have been trusted) means it
+    must stop being used as a few-shot example or a confidence-boosting
+    precedent, not just get a label nobody reads. Everything else
+    (ai_generated/human_reviewed/human_validated/corrected) is still
+    usable precedent -- "corrected" in particular is often the *most*
+    trustworthy kind, since a human explicitly fixed it.
+    """
     conn = _get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT COMPLAINT_TEXT, CATEGORY, MSISDN, DA_VALUE
+        SELECT COMPLAINT_TEXT, CATEGORY, MSISDN, DA_VALUE, STATUS
         FROM TT_AI_VERIFIED_CASES
+        WHERE STATUS != 'rejected'
         ORDER BY VERIFIED_AT DESC
         FETCH FIRST :lim ROWS ONLY
     """, lim=limit)
@@ -63,7 +83,7 @@ def fetch_verified_cases(limit=200):
     cursor.close()
     conn.close()
     return [
-        {"complaint_text": r[0], "category": r[1], "msisdn": r[2], "da_value": r[3]}
+        {"complaint_text": r[0], "category": r[1], "msisdn": r[2], "da_value": r[3], "status": r[4]}
         for r in rows
     ]
 
@@ -110,14 +130,48 @@ def compute_confidence(chosen_category, similar_cases, llm_confidence):
         return llm_confidence, "weak_precedent"
 
 
-def save_verified_case(complaint_text, category, msisdn, da_value, verified_by):
+def save_verified_case(complaint_text, category, msisdn, da_value, verified_by, status="human_validated"):
+    """
+    Default status is "human_validated", not "ai_generated" -- /verify-case
+    is only ever called by a SUPPORT_AGENT or SECURITY_ANALYST confirming a
+    case by hand (see app/main.py), so every row created through the normal
+    path already represents a human validation, not a raw AI guess.
+    """
+    if status not in VALID_STATUSES:
+        raise ValueError(f"Invalid status '{status}', must be one of {sorted(VALID_STATUSES)}")
+
     conn = _get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO TT_AI_VERIFIED_CASES (COMPLAINT_TEXT, CATEGORY, MSISDN, DA_VALUE, VERIFIED_BY)
-        VALUES (:complaint_text, :category, :msisdn, :da_value, :verified_by)
+        INSERT INTO TT_AI_VERIFIED_CASES (COMPLAINT_TEXT, CATEGORY, MSISDN, DA_VALUE, VERIFIED_BY, STATUS)
+        VALUES (:complaint_text, :category, :msisdn, :da_value, :verified_by, :status)
     """, complaint_text=complaint_text, category=category, msisdn=msisdn,
-         da_value=da_value, verified_by=verified_by)
+         da_value=da_value, verified_by=verified_by, status=status)
     conn.commit()
     cursor.close()
     conn.close()
+
+
+def update_case_status(case_id, status):
+    """
+    Lets a reviewer move a case to a different status after the fact --
+    e.g. marking a precedent "corrected" once a human fixes its category,
+    or "rejected" once it's found to be a coincidental/bad match that
+    should stop being used as precedent (see fetch_verified_cases, which
+    excludes rejected cases). Returns True if a row was actually updated,
+    False if case_id doesn't exist -- lets the caller 404 instead of
+    silently no-op'ing.
+    """
+    if status not in VALID_STATUSES:
+        raise ValueError(f"Invalid status '{status}', must be one of {sorted(VALID_STATUSES)}")
+
+    conn = _get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE TT_AI_VERIFIED_CASES SET STATUS = :status WHERE CASE_ID = :case_id
+    """, status=status, case_id=case_id)
+    updated = cursor.rowcount > 0
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return updated

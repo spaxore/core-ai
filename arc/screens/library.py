@@ -160,7 +160,8 @@ class LibraryScreen(Screen):
         selections = []
         for f in self.attack_files:
             for a in f.attacks:
-                label = f"[{a.severity.upper():<8}] {a.id} - {a.name}"
+                suffix = " (Fire All only)" if a.is_two_step else ""
+                label = f"[{a.severity.upper():<8}] {a.id} - {a.name}{suffix}"
                 selections.append(Selection(label, a.id, False))
         return selections
 
@@ -221,6 +222,19 @@ class LibraryScreen(Screen):
         try:
             for i, attack_id in enumerate(attack_ids, start=1):
                 attack = self.attacks_by_id[attack_id]
+
+                if attack.is_two_step:
+                    # Fire Selected only ever sends one prompt and checks one
+                    # status code -- it has no concept of seeding a case via
+                    # /verify-case first, so a two-step attack can't run
+                    # correctly here. Skip it visibly rather than silently
+                    # mis-firing just the probe (which would grade a
+                    # meaningless result: no seed ever went in).
+                    self.app.call_from_thread(table.update_cell, attack.id, "status", "skipped")
+                    self.app.call_from_thread(table.update_cell, attack.id, "grade", "USE FIRE ALL")
+                    self.app.call_from_thread(progress.update, _ascii_bar(i, total))
+                    continue
+
                 self.app.call_from_thread(
                     status.update,
                     f"[b]Running (selected)...[/b]  firing {attack.id}: {attack.name}",

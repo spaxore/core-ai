@@ -64,6 +64,7 @@ def investigate_sos_credit(msisdn, start_date, end_date, target_amount=None, anc
             "search_tier": "narrow_single_day",
             "da_value_used": None,
             "confidence": match["confidence"],
+            "evidence_coverage": match["evidence_coverage"],
             "note": f"Matched via {match['match_type']} on {single_day}",
         }
 
@@ -78,6 +79,7 @@ def investigate_sos_credit(msisdn, start_date, end_date, target_amount=None, anc
             "search_tier": "broadened_date_range",
             "da_value_used": None,
             "confidence": match2["confidence"],
+            "evidence_coverage": match2["evidence_coverage"],
             "note": f"Single-day search did not explain the stated amount. Broadened to {start_date}..{end_date} matched via {match2['match_type']}.",
         }
 

@@ -118,6 +118,7 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
                 "search_tier": "narrow_da_filtered",
                 "da_value_used": da_value,
                 "confidence": match["confidence"],
+                "evidence_coverage": match["evidence_coverage"],
                 "note": f"Matched via {match['match_type']} within DA{da_value}",
             }
 
@@ -132,6 +133,7 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
                 "search_tier": "broadened_no_da_filter",
                 "da_value_used": None,
                 "confidence": match2["confidence"],
+                "evidence_coverage": match2["evidence_coverage"],
                 "note": f"DA{da_value}-filtered search did not explain the stated amount. Broadened search matched via {match2['match_type']}.",
             }
 
@@ -160,6 +162,7 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
             "search_tier": "broad_no_da_named",
             "da_value_used": None,
             "confidence": match["confidence"],
+            "evidence_coverage": match["evidence_coverage"],
             "note": f"Matched via {match['match_type']}",
         }
 

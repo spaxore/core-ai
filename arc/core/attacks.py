@@ -20,12 +20,25 @@ import yaml
 class Attack:
     id: str
     name: str
-    prompt: str
     category: str
     owasp: str
     severity: str
-    expected: str  # "blocked" or "allowed"
+    expected: str  # "blocked", "allowed", or "isolated" (two-step seed/probe)
     notes: str = ""
+    # Single-shot attacks (the original, still-common shape) set prompt and
+    # leave seed/probe None. Two-step attacks (e.g. retrieval_poisoning.yaml,
+    # expected="isolated") set seed/probe instead and leave prompt None --
+    # ARC's lightweight "Fire Selected" path can't run these (it only knows
+    # how to send one prompt and check one status code), only "Fire All",
+    # which calls llm-redteam's own run() and already understands both
+    # shapes. See library.py's is_two_step() / _fire_selected_thread guard.
+    prompt: str | None = None
+    seed: dict | None = None
+    probe: str | None = None
+
+    @property
+    def is_two_step(self) -> bool:
+        return self.prompt is None and self.seed is not None
 
 
 @dataclass
@@ -53,11 +66,14 @@ def load_attack_library(attacks_dir: str) -> list[AttackFile]:
 
         attacks = []
         for a in raw.get("attacks", []):
+            raw_prompt = a.get("prompt")
             attacks.append(
                 Attack(
                     id=a["id"],
                     name=a["name"],
-                    prompt=a["prompt"].strip() if isinstance(a["prompt"], str) else a["prompt"],
+                    prompt=raw_prompt.strip() if isinstance(raw_prompt, str) else raw_prompt,
+                    seed=a.get("seed"),
+                    probe=a.get("probe").strip() if isinstance(a.get("probe"), str) else a.get("probe"),
                     category=category,
                     owasp=owasp,
                     severity=a.get("severity", "n/a"),

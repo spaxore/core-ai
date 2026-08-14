@@ -94,8 +94,10 @@ def is_lockout_response(status_code: int, response_body: Optional[dict]) -> bool
     return any(marker in detail for marker in LOCKOUT_MARKERS)
 
 
-def fire_attack(base_url: str, token: str, prompt: str, endpoint: str = "/classify", timeout: int = 90) -> dict:
-    """Send a single attack prompt to the Gateway and capture the raw result."""
+def fire_request(base_url: str, token: str, endpoint: str, body: dict, timeout: int = 90) -> dict:
+    """Send a single POST request and capture the raw result. Endpoint-agnostic --
+    used directly for /verify-case seed submissions and, via fire_attack below,
+    for the standard /classify and /investigate attack path."""
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
@@ -106,17 +108,17 @@ def fire_attack(base_url: str, token: str, prompt: str, endpoint: str = "/classi
         resp = requests.post(
             f"{base_url}{endpoint}",
             headers=headers,
-            json={"text": prompt},
+            json=body,
             timeout=timeout,
         )
         elapsed_ms = round((time.time() - started) * 1000, 1)
-        body = _safe_json(resp)
+        response_body = _safe_json(resp)
         return {
             "status_code": resp.status_code,
-            "response_body": body,
+            "response_body": response_body,
             "elapsed_ms": elapsed_ms,
             "error": None,
-            "locked_out": is_lockout_response(resp.status_code, body),
+            "locked_out": is_lockout_response(resp.status_code, response_body),
         }
     except requests.RequestException as e:
         elapsed_ms = round((time.time() - started) * 1000, 1)
@@ -127,6 +129,64 @@ def fire_attack(base_url: str, token: str, prompt: str, endpoint: str = "/classi
             "error": str(e),
             "locked_out": False,
         }
+
+
+def _verify_case_body(prompt: str, attack: dict) -> dict:
+    """/verify-case takes a different shape than /classify and /investigate
+    (complaint_text, category, msisdn, da_value instead of just text) -- an
+    attack targeting this endpoint carries those extra fields under
+    verify_category / verify_msisdn / verify_da_value so the YAML stays
+    declarative rather than needing endpoint-specific code per attack."""
+    return {
+        "complaint_text": prompt,
+        "category": attack.get("verify_category", "VOICE_EXPIRATION"),
+        "msisdn": attack.get("verify_msisdn"),
+        "da_value": attack.get("verify_da_value"),
+    }
+
+
+def fire_attack(base_url: str, token: str, prompt: str, attack: dict,
+                 endpoint: str = "/classify", timeout: int = 90) -> dict:
+    """Send a single attack prompt at the target endpoint and capture the raw
+    result. Builds the right body shape for /verify-case automatically."""
+    body = _verify_case_body(prompt, attack) if endpoint == "/verify-case" else {"text": prompt}
+    return fire_request(base_url, token, endpoint, body, timeout)
+
+
+def fire_seed_probe_attack(base_url: str, token: str, attack: dict,
+                            probe_endpoint: str = "/classify", timeout: int = 90) -> dict:
+    """
+    Two-step attack for the case-memory retrieval path: first seeds a
+    (seemingly legitimate) verified case via /verify-case -- exercising
+    retrieval poisoning rather than direct Gateway evasion -- then fires an
+    unrelated probe complaint at probe_endpoint to check whether the seed
+    leaked into, or hijacked, the probe's own classification. Grading (see
+    scorer.py's "isolated" branch) is based on the probe response only: the
+    seed itself is expected to succeed (that's what makes it poisoning, not
+    just another blocked prompt) unless the seed's own text independently
+    trips the Gateway (see RP-001 in retrieval_poisoning.yaml, which relies
+    on exactly that).
+    """
+    seed = attack["seed"]
+    seed_body = {
+        "complaint_text": seed["complaint_text"],
+        "category": seed.get("category", "VOICE_EXPIRATION"),
+        "msisdn": seed.get("msisdn"),
+        "da_value": seed.get("da_value"),
+    }
+    seed_result = fire_request(base_url, token, "/verify-case", seed_body, timeout)
+
+    probe_result = fire_request(base_url, token, probe_endpoint, {"text": attack["probe"]}, timeout)
+
+    return {
+        "seed_status_code": seed_result["status_code"],
+        "seed_response_body": seed_result["response_body"],
+        "seed_error": seed_result["error"],
+        # Probe outcome is what gets graded -- keep the standard field names
+        # (status_code, response_body, ...) so scorer.py and
+        # report_generator.py don't need to know this was a two-step attack.
+        **probe_result,
+    }
 
 
 def _safe_json(resp) -> Optional[dict]:
@@ -192,7 +252,11 @@ def run(base_url: str, username: str = None, password: str = None, attacks_dir: 
             continue
 
         print(f"[{i}/{len(attacks)}] {attack.get('id', '?')} - {attack.get('name', '?')} ...", end=" ")
-        outcome = fire_attack(base_url, token, attack["prompt"], endpoint, timeout)
+        if "seed" in attack:
+            outcome = fire_seed_probe_attack(base_url, token, attack, endpoint, timeout)
+        else:
+            attack_endpoint = attack.get("target_endpoint", endpoint)
+            outcome = fire_attack(base_url, token, attack["prompt"], attack, attack_endpoint, timeout)
         result = {
             **attack,
             **outcome,

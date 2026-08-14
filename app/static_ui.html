@@ -1,265 +1,486 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Secure TT AI Agent - Assistant Reclamations</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistant IA - Reclamations Tunisie Telecom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --tt-blue: #1978B6; --tt-blue-dark: #14608F; --tt-blue-soft: rgba(25,120,182,0.10);
+    --tt-teal: #2EBAA0; --tt-teal-dark: #229C86; --tt-teal-soft: rgba(46,186,160,0.12);
+    --tt-green: #2EB56D; --tt-green-soft: rgba(46,181,109,0.13);
+    --tt-amber: #FCBD2A; --tt-amber-soft: rgba(252,189,42,0.16);
+    --tt-red: #E8262E; --tt-red-soft: rgba(232,38,46,0.10);
+    --tt-gray: #9AA7AC; --tt-gray-soft: rgba(154,167,172,0.14);
+    --tt-ink: #0B2A45; --tt-surface: #F5F8FA; --tt-card: #FFFFFF;
+    --tt-text: #17262B; --tt-text-soft: #5B6E73; --tt-border: #E2E8ED;
+    --shadow-card: 0 1px 2px rgba(11,42,69,0.04), 0 8px 24px rgba(11,42,69,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
-    font-family: Segoe UI, Arial, sans-serif;
-    background: #f4f6f8;
     margin: 0;
-    padding: 40px;
-    color: #1a1a1a;
-  }
-  .container {
-    max-width: 800px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 10px;
-    padding: 30px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-  }
-  h1 {
-    font-size: 22px;
-    color: #003876;
-    margin-bottom: 4px;
-  }
-  .subtitle {
-    color: #666;
-    margin-bottom: 24px;
+    font-family: 'IBM Plex Sans', Arial, sans-serif;
+    background: var(--tt-surface);
+    color: var(--tt-text);
     font-size: 14px;
   }
-  textarea {
+  h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.01em; margin: 0; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* ---- Login screen ---- */
+  #loginScreen {
+    min-height: 100vh;
     width: 100%;
-    min-height: 100px;
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: inherit;
-    resize: vertical;
-    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 30% 20%, rgba(25,120,182,0.08), transparent 55%),
+                radial-gradient(circle at 80% 80%, rgba(46,186,160,0.08), transparent 50%),
+                var(--tt-surface);
   }
-  input[type="text"], input[type="password"] {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: inherit;
-    box-sizing: border-box;
-    margin-bottom: 10px;
+  .login-card {
+    width: 360px;
+    background: var(--tt-card);
+    border: 1px solid var(--tt-border);
+    border-radius: 16px;
+    padding: 32px 30px 30px 30px;
+    box-shadow: 0 4px 6px rgba(11,42,69,0.04), 0 20px 40px rgba(11,42,69,0.10);
+    text-align: center;
   }
+  .login-logo { width: 64px; height: 44px; margin: 0 auto 18px auto; }
+  .login-logo svg { width: 100%; height: 100%; }
+  .login-title { font-size: 17px; margin-bottom: 4px; }
+  .login-sub { font-size: 12px; color: var(--tt-text-soft); margin-bottom: 26px; line-height: 1.4; }
+  .login-field { text-align: left; margin-bottom: 13px; }
+  .login-field label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--tt-text-soft); margin-bottom: 6px; }
+  #loginScreen input[type="text"], #loginScreen input[type="password"] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--tt-border); border-radius: 9px;
+    font-size: 13px; background: var(--tt-surface); font-family: 'IBM Plex Sans', sans-serif;
+    box-sizing: border-box; margin-bottom: 0;
+  }
+  #loginScreen input:focus { outline: none; border-color: var(--tt-blue); background: #fff; box-shadow: 0 0 0 3px var(--tt-blue-soft); }
+  .login-btn { width: 100%; margin-top: 14px; justify-content: center; }
+  #loginStatus { min-height: 18px; margin-top: 12px; font-size: 12px; }
+  #loginError { color: var(--tt-red); }
+  .login-footer { position: absolute; bottom: 22px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--tt-text-soft); }
+
+  /* ---- Buttons ---- */
   button {
-    margin-top: 12px;
-    background: #003876;
+    background: var(--tt-blue);
     color: white;
     border: none;
-    padding: 12px 24px;
-    border-radius: 6px;
-    font-size: 15px;
+    padding: 11px 22px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'IBM Plex Sans', sans-serif;
     cursor: pointer;
   }
-  button:hover {
-    background: #002a5c;
+  button:hover { background: var(--tt-blue-dark); }
+  button:disabled { background: var(--tt-gray); cursor: not-allowed; }
+
+  /* ---- Authenticated shell ---- */
+  #appShell { display: none; min-height: 100vh; }
+  #appShell.visible { display: flex; }
+
+  .sidebar {
+    width: 220px; flex-shrink: 0; background: var(--tt-ink); color: #DDEEEC;
+    padding: 20px 14px; display: flex; flex-direction: column;
   }
-  button:disabled {
-    background: #999;
-    cursor: not-allowed;
+  .brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 22px 8px; }
+  .brand-logo { width: 36px; height: 24px; flex-shrink: 0; }
+  .brand-logo svg { width: 100%; height: 100%; }
+  .brand-name { font-weight: 600; font-size: 15px; color: #fff; }
+  .brand-sub { font-size: 11px; color: #7FA9A3; text-transform: uppercase; letter-spacing: .04em; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; color: #A9C6C2; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav-item:hover:not(.disabled) { background: rgba(255,255,255,.05); }
+  .nav-item.active { background: var(--tt-teal-soft); color: #7FE0CE; }
+  .nav-item.disabled { opacity: .45; cursor: default; }
+  .nav-item .soon { margin-left: auto; font-size: 9px; background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 999px; }
+  .sidebar-footer { margin-top: auto; padding: 10px 8px; font-size: 11px; color: #6C8E89; }
+  .sidebar-footer .who { color: #DDEEEC; font-weight: 600; }
+  .sidebar-footer .logout { display: block; margin-top: 4px; color: #7FE0CE; text-decoration: underline; cursor: pointer; }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    height: 60px; border-bottom: 1px solid var(--tt-border); background: var(--tt-card);
+    display: flex; align-items: center; justify-content: space-between; padding: 0 26px; flex-shrink: 0;
   }
-  .result {
-    margin-top: 24px;
-    display: none;
+  .topbar h1 { font-size: 16px; }
+  .topbar .sub { font-size: 11.5px; color: var(--tt-text-soft); margin-top: 2px; }
+
+  .bell-wrap { position: relative; }
+  .bell-btn {
+    width: 34px; height: 34px; border-radius: 9px; background: var(--tt-surface);
+    border: 1px solid var(--tt-border); display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
   }
-  .card {
-    background: #f9fafb;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
+  .bell-btn svg { width: 16px; height: 16px; stroke: var(--tt-text-soft); }
+  .notif-panel {
+    position: absolute; top: 42px; right: 0; width: 300px; background: var(--tt-card);
+    border: 1px solid var(--tt-border); border-radius: 12px; box-shadow: var(--shadow-card);
+    display: none; overflow: hidden; z-index: 20;
   }
-  .card h3 {
-    margin: 0 0 8px 0;
-    font-size: 14px;
-    color: #003876;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  .notif-panel.open { display: block; }
+  .notif-header { padding: 12px 14px; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--tt-border); }
+  .notif-empty { padding: 16px 14px; font-size: 12px; color: var(--tt-text-soft); }
+
+  .content { flex: 1; overflow-y: auto; padding: 26px; width: 100%; }
+  .card { background: var(--tt-card); border: 1px solid var(--tt-border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow-card); }
+  .card + .card { margin-top: 16px; }
+  .card h3 { font-size: 12px; color: var(--tt-text-soft); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
+
+  textarea {
+    width: 100%; min-height: 100px; padding: 12px; border: 1px solid var(--tt-border);
+    border-radius: 9px; font-size: 14px; font-family: inherit; resize: vertical; box-sizing: border-box;
+    background: var(--tt-surface);
   }
+  textarea:focus { outline: none; border-color: var(--tt-blue); background: #fff; box-shadow: 0 0 0 3px var(--tt-blue-soft); }
+
+  /* ---- In-progress state: one honest indicator, no fake stages ---- */
+  .investigating-block {
+    display: none; margin-top: 16px; padding: 16px 18px; background: var(--tt-blue-soft);
+    border-radius: 10px; align-items: center; gap: 12px;
+  }
+  .investigating-block.active { display: flex; }
+  .spinner {
+    width: 20px; height: 20px; border: 2.5px solid rgba(25,120,182,0.25); border-top-color: var(--tt-blue);
+    border-radius: 50%; flex-shrink: 0; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .investigating-text .t { font-size: 13px; font-weight: 600; color: var(--tt-blue-dark); }
+  .investigating-text .d { font-size: 11.5px; color: var(--tt-text-soft); margin-top: 1px; }
+  textarea:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .result { margin-top: 16px; display: none; }
+
+  /* ---- Empty state: stats strip ---- */
+  .stats-strip { display: flex; gap: 0; margin-bottom: 16px; }
+  .stat-block { flex: 1; padding: 14px 18px; background: var(--tt-card); border: 1px solid var(--tt-border); }
+  .stat-block:first-child { border-radius: 12px 0 0 12px; }
+  .stat-block:last-child { border-radius: 0 12px 12px 0; }
+  .stat-block:not(:last-child) { border-right: none; }
+  .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; color: var(--tt-blue-dark); }
+  .stat-label { font-size: 11px; color: var(--tt-text-soft); margin-top: 2px; }
+
+  /* ---- Secondary row: how it works + recent investigations ---- */
+  .secondary-row { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 16px; }
+  @media (min-width: 780px) { .secondary-row { grid-template-columns: 1.1fr 0.9fr; } }
+
+  .howitworks-steps { display: flex; flex-direction: column; gap: 0; }
+  .hiw-row { display: flex; gap: 12px; padding: 9px 0; position: relative; }
+  .hiw-row:not(:last-child)::before { content: ''; position: absolute; left: 13px; top: 32px; bottom: -9px; width: 2px; background: var(--tt-border); }
+  .hiw-dot {
+    width: 27px; height: 27px; border-radius: 50%; background: var(--tt-teal-soft); color: var(--tt-teal-dark);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; z-index: 1;
+  }
+  .hiw-text .t { font-size: 12.5px; font-weight: 600; }
+  .hiw-text .d { font-size: 11.5px; color: var(--tt-text-soft); margin-top: 1px; }
+
+  /* ---- Recent investigations: clickable cards ---- */
+  .ticket-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 4px; border-bottom: 1px solid var(--tt-border); cursor: pointer; transition: background 0.12s ease;
+  }
+  .ticket-card:last-of-type { border-bottom: none; }
+  .ticket-card:hover { background: var(--tt-surface); margin: 0 -12px; padding-left: 16px; padding-right: 16px; border-radius: 8px; }
+  .ticket-left { display: flex; flex-direction: column; gap: 2px; }
+  .ticket-left .cat { font-size: 12.5px; font-weight: 600; }
+  .ticket-left .meta { font-size: 11px; color: var(--tt-text-soft); font-family: 'IBM Plex Mono', monospace; }
+  .ticket-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .ticket-chevron, .row-chevron { width: 14px; height: 14px; stroke: var(--tt-text-soft); }
+  .see-all-link {
+    display: block; text-align: center; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--tt-border);
+    font-size: 11.5px; color: var(--tt-blue-dark); text-decoration: none; cursor: pointer;
+  }
+
+  /* ---- Ticket detail view ---- */
+  #ticketDetailView { display: none; }
+  .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--tt-text-soft); cursor: pointer; margin-bottom: 14px; }
+  .back-link svg { width: 14px; height: 14px; stroke: var(--tt-text-soft); }
+  .back-link:hover { color: var(--tt-blue-dark); }
+  .detail-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .detail-id { font-size: 11px; color: var(--tt-text-soft); font-family: 'IBM Plex Mono', monospace; }
+  .related-history-item {
+    display: flex; align-items: center; justify-content: space-between; padding: 9px 0;
+    border-bottom: 1px solid var(--tt-border); font-size: 12px; cursor: pointer;
+  }
+  .related-history-item:last-child { border-bottom: none; }
+  #relatedHistoryList { max-height: 280px; overflow-y: auto; }
+  .related-history-item:hover { color: var(--tt-blue-dark); }
+  .related-history-item .rh-cat { font-weight: 500; }
+  .related-history-item .rh-date { color: var(--tt-text-soft); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+
+  /* ---- Known-fix #4: label the technical note so the register shift is intentional ---- */
+  .tech-note-label { font-weight: 700; font-style: normal; text-transform: uppercase; font-size: 10px; letter-spacing: .04em; margin-right: 4px; }
+
+  /* ---- Résultat card: badges -> msisdn -> explanation (headline) -> match confidence + note -> evidence ---- */
+  .badge-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .badge {
-    display: inline-block;
-    background: #e8f0fe;
-    color: #003876;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+    padding: 5px 10px; border-radius: 999px; background: var(--tt-blue-soft); color: var(--tt-blue-dark);
   }
-  .confidence-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-left: 8px;
+  .badge-label { font-size: 10px; color: var(--tt-text-soft); text-transform: uppercase; letter-spacing: .04em; margin-right: 2px; }
+  .confidence-badge { display: inline-block; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .confidence-high { background: var(--tt-green-soft); color: #1E8A54; }
+  .confidence-medium { background: var(--tt-amber-soft); color: #8A6200; }
+  .confidence-low { background: var(--tt-gray-soft); color: #5B6E73; }
+  .msisdn-line { font-size: 12px; color: var(--tt-text-soft); margin-top: 8px; }
+
+  .history-filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .history-filters select, .history-filters input[type="text"] {
+    padding: 8px 10px; border: 1px solid var(--tt-border); border-radius: 8px;
+    font-size: 13px; font-family: 'IBM Plex Sans', sans-serif; background: var(--tt-surface);
   }
-  .confidence-high {
-    background: #e6f4ea;
-    color: #1e7e34;
+  .history-filters button { padding: 8px 16px; }
+  #historyTableBody td { font-size: 11.5px; }
+  #historyTableBody .coverage-cell { color: var(--tt-text-soft); font-size: 11px; }
+  #historyTableBody tr.has-detail { cursor: pointer; }
+  #historyTableBody tr.has-detail:hover { background: var(--tt-surface); }
+
+  .explanation-text {
+    font-size: 14.5px; line-height: 1.6; color: var(--tt-text);
+    margin: 14px 0 18px 0; padding: 14px 16px;
+    background: var(--tt-blue-soft); border-radius: 10px;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 500;
   }
-  .confidence-medium {
-    background: #fff8e1;
-    color: #b78103;
-  }
-  .confidence-low {
-    background: #fdecea;
-    color: #b00020;
-  }
+
+  .evidence-divider { display: flex; align-items: center; gap: 8px; padding-top: 14px; border-top: 1px solid var(--tt-border); margin-bottom: 8px; }
   .evidence-note {
-    font-size: 12px;
-    color: #888;
-    margin-bottom: 10px;
-    font-style: italic;
+    font-size: 11.5px; color: var(--tt-text-soft); font-style: italic; margin: 10px 0 12px 0;
+    padding: 10px 12px; background: var(--tt-surface); border-left: 3px solid var(--tt-teal); border-radius: 0 8px 8px 0;
   }
   .evidence-summary {
-    display: flex;
-    gap: 20px;
-    background: #eef3fb;
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin-bottom: 10px;
-    font-size: 13px;
+    display: flex; gap: 22px; background: var(--tt-blue-soft); border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 10px; font-size: 12.5px;
   }
-  .evidence-summary .stat-value {
-    font-weight: 700;
-    color: #003876;
-  }
+  .evidence-summary .stat-value { font-weight: 700; color: var(--tt-blue-dark); font-family: 'IBM Plex Mono', monospace; }
   .evidence-table-wrapper {
-    max-height: 350px;
-    overflow-y: auto;
-    border: 1px solid #eee;
-    border-radius: 6px;
+    max-height: 350px; overflow-y: auto; overflow-x: auto;
+    border: 1px solid var(--tt-border); border-radius: 9px; max-width: 100%;
   }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-  th, td {
-    text-align: left;
-    padding: 6px 8px;
-    border-bottom: 1px solid #eee;
-  }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 480px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--tt-border); font-family: 'IBM Plex Mono', monospace; }
+  td:first-child, th:first-child { font-family: 'IBM Plex Sans', sans-serif; }
   th {
-    color: #666;
-    font-weight: 600;
-    position: sticky;
-    top: 0;
-    background: #f9fafb;
+    color: var(--tt-text-soft); font-weight: 600; position: sticky; top: 0; background: var(--tt-surface);
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em;
   }
-  .explanation-text {
-    font-size: 14px;
-    line-height: 1.6;
-    color: #222;
-  }
-  .loading {
-    color: #666;
-    font-style: italic;
-    margin-top: 16px;
-    display: none;
-  }
-  .loading::after {
-    content: "";
-    display: inline-block;
-    width: 12px;
-    text-align: left;
-    animation: dots 1.2s steps(4, end) infinite;
-  }
-  @keyframes dots {
-    0%   { content: ""; }
-    25%  { content: "."; }
-    50%  { content: ".."; }
-    75%  { content: "..."; }
-    100% { content: ""; }
-  }
-  .error-text {
-    color: #b00020;
-  }
-  #loginBox {
-    max-width: 320px;
-  }
-  #loginStatus {
-    font-size: 13px;
-    margin-top: 8px;
-  }
-  #loginError {
-    color: #b00020;
-  }
-  #loggedInBar {
-    display: none;
-    background: #e6f4ea;
-    color: #1e7e34;
-    padding: 8px 14px;
-    border-radius: 6px;
-    font-size: 13px;
-    margin-bottom: 20px;
-  }
-  #logoutLink {
-    color: #1e7e34;
-    text-decoration: underline;
-    cursor: pointer;
-    margin-left: 10px;
-  }
-  #appBox {
-    display: none;
-  }
+
+  .error-text { color: var(--tt-red); font-size: 13px; }
+  .empty-text { color: var(--tt-text-soft); font-size: 13px; }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>Assistant IA - Reclamations Tunisie Telecom</h1>
-  <div class="subtitle">Saisissez la reclamation du client pour lancer l'analyse automatique.</div>
 
-  <div id="loggedInBar">
-    Connecte en tant que <strong id="loggedInUser"></strong> (<span id="loggedInRole"></span>)
-    <span id="logoutLink" onclick="logout()">Se deconnecter</span>
-  </div>
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 108.5 70.6"><style>.st0{fill:#1978B6}.st1{fill:#35A9E0}.st2{fill:#225FAD}.st3{fill:#2EBAA0}.st4{fill:#28874E}.st5{fill:#2B9A97}.st6{fill:#33A55E}.st7{fill:#EFEB63}.st8{fill:#82C564}.st9{fill:#E8262E}.st10{fill:#F1683C}.st11{fill:#FCBD2A}.st12{fill:#F89D5F}.st13{fill:#EE2E7E}.st14{fill:#762D8A}.st15{fill:#562B7B}.st16{fill:#DA5F75}.st17{fill:#F0597C}.st18{fill:#EF4137}.st19{fill:#F0522D}.st20{fill:#EF3830}.st21{fill:#E5499A}.st22{fill:#B53B88}.st23{fill:#6D2A84}.st24{fill:#D62228}.st25{fill:#21ACDB}.st26{fill:#2699BC}.st27{fill:#1E4583}.st28{fill:#2CAA9A}.st29{fill:#29B784}.st30{fill:#2EB56D}.st31{fill:#E7D555}.st32{fill:#68BF64}.st33{fill:#FAA82D}.st34{fill:#F6913F}.st35{fill:#FFFFFF}</style><g><path class="st0" d="M29.4,0.5c-0.4,0.1-2.1,0.5-2.5,0.6c-3.5,0.9-6.7,2.3-9.7,4.1l22.6,30L29.4,0.5z"/><path class="st1" d="M17.2,5.2c-3.8,2.3-7.2,5.4-9.9,9c-0.4,0.5-0.8,1-1.1,1.6l33.6,19.5L17.2,5.2z"/><path class="st2" d="M39.7,35.2L6.1,15.7C4,18.9,2.3,22.4,1.3,26.2c0,0,0,0,0,0c0,0,0,0,0,0c-0.7,2.5-1.1,6.2-1.2,8.9c0,0,0,0,0,0L39.7,35.2z"/><path class="st3" d="M39.5,0.1C38.7,0,33.7-0.2,29.4,0.5l10.4,34.7l9.6-33C45.2,1.1,42.3,0.4,39.5,0.1"/><polygon class="st4" points="39.7,35.2 73.2,12.8 66.6,9.4 62.3,7.3"/><path class="st5" d="M62.3,7.3c-2.3-1.2-3.9-1.8-5.5-2.4c-3.3-1.3-4.4-1.6-7.5-2.7l-9.6,33L62.3,7.3z"/><path class="st6" d="M91.8,23.8c-7-4.5-13.1-8.1-18.6-11.1c-1.1-0.6-2.2-1.1-3.3-1.7L39.7,35.2L91.8,23.8z"/><path class="st7" d="M108.5,35.2c-5-3.6-9.8-6.8-14.2-9.7c-0.8-0.6-1.7-1.1-2.5-1.6l-52,11.4L108.5,35.2z"/><polygon class="st8" points="91.8,23.8 90.8,23.2 89,22 86.9,20.7 84.4,19.2 81.3,17.4 78.5,15.7 39.7,35.2"/><polygon class="st9" points="39.7,35.2 73.1,57.7 66.6,61 62.4,63.1"/><path class="st10" d="M91.8,46.6c-4.8,3.1-9.2,5.8-13.3,8.1c-1.8,1-3.6,2-5.3,2.9c-1.1,0.6-2.2,1.1-3.2,1.7L39.7,35.2L91.8,46.6z"/><path class="st11" d="M108.5,35.2c-5,3.6-9.8,6.9-14.2,9.8c-0.8,0.6-1.7,1.1-2.5,1.6l-52-11.4L108.5,35.2z"/><polygon class="st12" points="91.8,46.6 88.1,49 84.4,51.2 81.2,53.1 78.5,54.7 39.7,35.2"/><path class="st13" d="M29.4,70c-0.4-0.1-2.1-0.4-2.5-0.6c-3.5-0.9-6.7-2.3-9.7-4.1l22.6-30.1L29.4,70z"/><path class="st14" d="M17.2,65.3c-3.8-2.3-7.2-5.4-9.9-9c-0.4-0.5-0.8-1-1.1-1.6l33.6-19.6L17.2,65.3z"/><path class="st15" d="M39.7,35.2L6.1,54.8C4,51.6,2.3,48.1,1.3,44.3c0,0,0,0,0,0c0,0,0,0,0,0c-0.7-2.5-1.1-6.3-1.3-9c0,0,0,0,0,0H39.7z"/><path class="st16" d="M39.5,70.5c-0.8,0.1-2,0.2-2,0.2c-0.4,0-1.8,0-1.8,0c-2.2,0-4.3-0.3-6.4-0.6l10.4-34.8l8.5,33.4c0,0-0.5,0.2-0.6,0.2C43.8,69.9,41.4,70.3,39.5,70.5"/><line class="st17" x1="48.3" y1="68.5" x2="39.7" y2="35.2"/><path class="st18" d="M62.4,63.1c-2.3,1.2-4,1.8-5.6,2.4c-3.3,1.3-5.4,2-8.5,3.1l-8.5-33.4L62.4,63.1z"/><path class="st19" d="M39.7,35.2l30.2,24.1c0-0.6-1.6-8-1.9-9.9L39.7,35.2z"/><path class="st20" d="M39.7,35.2L57,56.5c4.5,0.9,9.9,2.2,12.9,2.8L39.7,35.2z"/><polygon class="st21" points="17.2,65.3 39.7,35.2 32.6,59.3"/><path class="st22" d="M39.7,35.2L20.1,46.6c-0.2,1.5-1.9,15-2.9,18.7L39.7,35.2"/><polygon class="st23" points="0,35.2 39.7,35.2 20.1,46.6"/><polygon class="st13" points="32.6,59.3 39.7,35.2 48.3,68.6"/><polygon class="st24" points="57,56.5 39.7,35.2 48.3,68.6"/><polygon class="st25" points="17.2,5.2 39.7,35.2 32.1,9.8"/><path class="st26" d="M17.2,5.2c1.1,8.3,3.2,18.8,3.2,18.8l19.4,11.2L17.2,5.2z"/><polygon class="st27" points="0,35.2 39.7,35.2 20.4,24"/><polygon class="st28" points="32.1,9.8 39.7,35.2 49.3,2.3"/><line class="st29" x1="49.3" y1="2.3" x2="39.7" y2="35.2"/><polygon class="st6" points="69.9,11.1 57.1,13.8 39.7,35.2"/><polygon class="st3" points="49.3,2.3 57.1,13.8 39.8,35.1"/><polygon class="st30" points="69.9,11.1 39.7,35.2 68.6,20.7"/><path class="st31" d="M81.4,35.2c1.5-1.8,8.8-9.3,10.4-11.4l-52,11.4L81.4,35.2z"/><polygon class="st32" points="91.8,23.8 68.6,20.7 39.7,35.2"/><path class="st33" d="M81.4,35.2c3.4,3.5,8.7,9.8,10.4,11.4l-52-11.4L81.4,35.2z"/><polygon class="st34" points="91.8,46.6 68,49.4 39.7,35.2"/><path class="st35" d="M13.9,51.2h-1.4v5.4c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-5.4H9.9c-0.1,0-0.2-0.1-0.2-0.2v-0.7c0-0.1,0.1-0.2,0.2-0.2h4c0.1,0,0.2,0.1,0.2,0.2v0.7C14.1,51.2,14,51.2,13.9,51.2"/><path class="st35" d="M18.2,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-0.2c-0.4,0.3-0.8,0.4-1.3,0.4c-0.4,0-0.8-0.1-1-0.4c-0.3-0.3-0.4-0.9-0.4-1.6V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v2.9c0,0.4,0,0.7,0.2,0.9c0.1,0.1,0.3,0.2,0.5,0.2c0.3,0,0.7-0.2,0.9-0.4V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C18.4,56.8,18.3,56.9,18.2,56.9"/><path class="st35" d="M22.9,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-2.9c0-0.8-0.1-1-0.7-1c-0.3,0-0.6,0.1-0.9,0.3v3.6c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.7c0.1,0,0.2,0.1,0.2,0.2v0.2c0.5-0.3,0.8-0.4,1.3-0.4c1.2,0,1.4,0.9,1.4,2v2.9C23,56.8,22.9,56.9,22.9,56.9"/><path class="st35" d="M24.8,51.1H24c-0.1,0-0.2-0.1-0.2-0.2v-0.8c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2V51C25,51.1,24.9,51.1,24.8,51.1 M24.8,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C25,56.8,24.9,56.9,24.8,56.9"/><path class="st35" d="M27.3,56.9c-0.3,0-1,0-1.5-0.2c-0.1,0-0.2-0.1-0.2-0.2V56c0-0.1,0.1-0.1,0.1-0.1h0c0.4,0.1,1.1,0.1,1.4,0.1c0.5,0,0.6-0.2,0.6-0.4c0-0.2-0.1-0.3-0.4-0.5l-1.1-0.8c-0.4-0.3-0.7-0.7-0.7-1.2c0-0.9,0.5-1.3,1.6-1.3c0.7,0,1,0.1,1.5,0.2c0.1,0,0.1,0.1,0.1,0.2v0.5c0,0.1-0.1,0.2-0.1,0.2h0c-0.2,0-0.9-0.1-1.4-0.1c-0.4,0-0.6,0.1-0.6,0.4c0,0.1,0.1,0.2,0.3,0.4l1.1,0.7c0.7,0.5,0.8,0.9,0.8,1.4C28.9,56.3,28.4,56.9,27.3,56.9"/><path class="st35" d="M30.6,51.1h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-0.8c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2V51C30.8,51.1,30.7,51.1,30.6,51.1 M30.6,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C30.7,56.8,30.7,56.9,30.6,56.9"/><path class="st35" d="M35.2,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.9,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C35.4,54.7,35.3,54.7,35.2,54.7 M34.3,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L34.3,53.9L34.3,53.9z"/><path class="st35" d="M41.8,51.2h-1.4v5.4c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-5.4h-1.4c-0.1,0-0.2-0.1-0.2-0.2v-0.7c0-0.1,0.1-0.2,0.2-0.2h4c0.1,0,0.2,0.1,0.2,0.2v0.7C41.9,51.2,41.9,51.2,41.8,51.2"/><path class="st35" d="M46.1,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.9,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C46.2,54.7,46.2,54.7,46.1,54.7 M45.2,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L45.2,53.9L45.2,53.9z"/><path class="st35" d="M47.9,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-6.5c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v6.5C48.1,56.8,48,56.9,47.9,56.9"/><path class="st35" d="M52.6,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.2,0,0.2,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.8,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C52.7,54.7,52.7,54.7,52.6,54.7 M51.7,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L51.7,53.9L51.7,53.9z"/><path class="st35" d="M56.2,56.8c-0.2,0.1-0.6,0.1-1.1,0.1c-1.1,0-1.9-0.7-1.9-2.2v-0.8c0-1.5,0.8-2.2,1.9-2.2c0.5,0,0.9,0.1,1.1,0.1c0.1,0,0.2,0.1,0.2,0.2v0.6c0,0.1-0.1,0.1-0.1,0.1h0c-0.3,0-0.5-0.1-1.1-0.1c-0.4,0-0.8,0.2-0.8,1.2v0.8c0,0.9,0.4,1.2,0.8,1.2c0.5,0,0.7,0,1.1-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6C56.4,56.7,56.3,56.8,56.2,56.8"/><path class="st35" d="M58.9,56.9c-1.3,0-2-0.9-2-2.2V54c0-1.3,0.7-2.2,2-2.2c1.3,0,1.9,1,1.9,2.2v0.7C60.8,56,60.2,56.9,58.9,56.9 M59.8,54c0-0.7-0.3-1.2-0.9-1.2c-0.6,0-0.9,0.5-0.9,1.2v0.7c0,0.7,0.3,1.2,0.9,1.2c0.6,0,0.9-0.5,0.9-1.2V54z"/><path class="st35" d="M67.3,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-3.1c0-0.7-0.1-0.9-0.6-0.9c-0.2,0-0.5,0.1-0.8,0.2c0,0.2,0,0.4,0,0.6v3.1c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-3.1c0-0.7-0.1-0.9-0.6-0.9c-0.2,0-0.4,0.1-0.8,0.3v3.6c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.7c0.1,0,0.2,0.1,0.2,0.2v0.2c0.3-0.2,0.7-0.4,1.2-0.4c0.5,0,0.8,0.2,1,0.4c0.4-0.3,0.8-0.4,1.3-0.4c1.1,0,1.4,0.8,1.4,1.9v3.1C67.4,56.8,67.3,56.9,67.3,56.9"/><path class="st35" d="M9.9,20.4v3.4H19v19.1c0,3.7,2.3,5,5,5h3.8V23.8h4.5c2.7,0,4.9-2.5,4.9-4.7v-3.4H14.8C11.6,15.7,9.9,18.3,9.9,20.4"/><path class="st35" d="M45,15.8c-3.2,0-5,2.5-5,4.7v3.4h9.1v19.1c0,3.7,2.3,5,5,5H58V23.8h4.5c2.7,0,4.9-2.5,4.9-4.7v-3.4H45z"/></g></svg>
+    </div>
+    <h1 class="login-title">Assistant IA — Réclamations</h1>
+    <div class="login-sub">Connectez-vous pour accéder à l'espace d'investigation</div>
 
-  <div id="loginBox">
-    <input type="text" id="loginUsername" placeholder="Nom d'utilisateur">
-    <input type="password" id="loginPassword" placeholder="Mot de passe">
-    <button id="loginBtn" onclick="login()">Se connecter</button>
+    <div class="login-field">
+      <label>Nom d'utilisateur</label>
+      <input type="text" id="loginUsername" placeholder="Nom d'utilisateur">
+    </div>
+    <div class="login-field">
+      <label>Mot de passe</label>
+      <input type="password" id="loginPassword" placeholder="••••••••••••">
+    </div>
+
+    <button id="loginBtn" class="login-btn" onclick="login()">Se connecter</button>
     <div id="loginStatus"></div>
   </div>
 
-  <div id="appBox">
-    <textarea id="complaintText" placeholder="Exemple: Client 21693926356 se plaint que son solde diminue chaque jour a cause d'un abonnement SMS+..."></textarea>
-    <br>
-    <button id="submitBtn" onclick="submitComplaint()">Analyser la reclamation</button>
+  <div class="login-footer">TT AI Investigation Platform · Usage interne — DCSI Kasbah</div>
+</div>
 
-    <div class="loading" id="loadingMsg">Analyse en cours, veuillez patienter</div>
+<div id="appShell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 108.5 70.6"><style>.st0{fill:#1978B6}.st1{fill:#35A9E0}.st2{fill:#225FAD}.st3{fill:#2EBAA0}.st4{fill:#28874E}.st5{fill:#2B9A97}.st6{fill:#33A55E}.st7{fill:#EFEB63}.st8{fill:#82C564}.st9{fill:#E8262E}.st10{fill:#F1683C}.st11{fill:#FCBD2A}.st12{fill:#F89D5F}.st13{fill:#EE2E7E}.st14{fill:#762D8A}.st15{fill:#562B7B}.st16{fill:#DA5F75}.st17{fill:#F0597C}.st18{fill:#EF4137}.st19{fill:#F0522D}.st20{fill:#EF3830}.st21{fill:#E5499A}.st22{fill:#B53B88}.st23{fill:#6D2A84}.st24{fill:#D62228}.st25{fill:#21ACDB}.st26{fill:#2699BC}.st27{fill:#1E4583}.st28{fill:#2CAA9A}.st29{fill:#29B784}.st30{fill:#2EB56D}.st31{fill:#E7D555}.st32{fill:#68BF64}.st33{fill:#FAA82D}.st34{fill:#F6913F}.st35{fill:#FFFFFF}</style><g><path class="st0" d="M29.4,0.5c-0.4,0.1-2.1,0.5-2.5,0.6c-3.5,0.9-6.7,2.3-9.7,4.1l22.6,30L29.4,0.5z"/><path class="st1" d="M17.2,5.2c-3.8,2.3-7.2,5.4-9.9,9c-0.4,0.5-0.8,1-1.1,1.6l33.6,19.5L17.2,5.2z"/><path class="st2" d="M39.7,35.2L6.1,15.7C4,18.9,2.3,22.4,1.3,26.2c0,0,0,0,0,0c0,0,0,0,0,0c-0.7,2.5-1.1,6.2-1.2,8.9c0,0,0,0,0,0L39.7,35.2z"/><path class="st3" d="M39.5,0.1C38.7,0,33.7-0.2,29.4,0.5l10.4,34.7l9.6-33C45.2,1.1,42.3,0.4,39.5,0.1"/><polygon class="st4" points="39.7,35.2 73.2,12.8 66.6,9.4 62.3,7.3"/><path class="st5" d="M62.3,7.3c-2.3-1.2-3.9-1.8-5.5-2.4c-3.3-1.3-4.4-1.6-7.5-2.7l-9.6,33L62.3,7.3z"/><path class="st6" d="M91.8,23.8c-7-4.5-13.1-8.1-18.6-11.1c-1.1-0.6-2.2-1.1-3.3-1.7L39.7,35.2L91.8,23.8z"/><path class="st7" d="M108.5,35.2c-5-3.6-9.8-6.8-14.2-9.7c-0.8-0.6-1.7-1.1-2.5-1.6l-52,11.4L108.5,35.2z"/><polygon class="st8" points="91.8,23.8 90.8,23.2 89,22 86.9,20.7 84.4,19.2 81.3,17.4 78.5,15.7 39.7,35.2"/><polygon class="st9" points="39.7,35.2 73.1,57.7 66.6,61 62.4,63.1"/><path class="st10" d="M91.8,46.6c-4.8,3.1-9.2,5.8-13.3,8.1c-1.8,1-3.6,2-5.3,2.9c-1.1,0.6-2.2,1.1-3.2,1.7L39.7,35.2L91.8,46.6z"/><path class="st11" d="M108.5,35.2c-5,3.6-9.8,6.9-14.2,9.8c-0.8,0.6-1.7,1.1-2.5,1.6l-52-11.4L108.5,35.2z"/><polygon class="st12" points="91.8,46.6 88.1,49 84.4,51.2 81.2,53.1 78.5,54.7 39.7,35.2"/><path class="st13" d="M29.4,70c-0.4-0.1-2.1-0.4-2.5-0.6c-3.5-0.9-6.7-2.3-9.7-4.1l22.6-30.1L29.4,70z"/><path class="st14" d="M17.2,65.3c-3.8-2.3-7.2-5.4-9.9-9c-0.4-0.5-0.8-1-1.1-1.6l33.6-19.6L17.2,65.3z"/><path class="st15" d="M39.7,35.2L6.1,54.8C4,51.6,2.3,48.1,1.3,44.3c0,0,0,0,0,0c0,0,0,0,0,0c-0.7-2.5-1.1-6.3-1.3-9c0,0,0,0,0,0H39.7z"/><path class="st16" d="M39.5,70.5c-0.8,0.1-2,0.2-2,0.2c-0.4,0-1.8,0-1.8,0c-2.2,0-4.3-0.3-6.4-0.6l10.4-34.8l8.5,33.4c0,0-0.5,0.2-0.6,0.2C43.8,69.9,41.4,70.3,39.5,70.5"/><line class="st17" x1="48.3" y1="68.5" x2="39.7" y2="35.2"/><path class="st18" d="M62.4,63.1c-2.3,1.2-4,1.8-5.6,2.4c-3.3,1.3-5.4,2-8.5,3.1l-8.5-33.4L62.4,63.1z"/><path class="st19" d="M39.7,35.2l30.2,24.1c0-0.6-1.6-8-1.9-9.9L39.7,35.2z"/><path class="st20" d="M39.7,35.2L57,56.5c4.5,0.9,9.9,2.2,12.9,2.8L39.7,35.2z"/><polygon class="st21" points="17.2,65.3 39.7,35.2 32.6,59.3"/><path class="st22" d="M39.7,35.2L20.1,46.6c-0.2,1.5-1.9,15-2.9,18.7L39.7,35.2"/><polygon class="st23" points="0,35.2 39.7,35.2 20.1,46.6"/><polygon class="st13" points="32.6,59.3 39.7,35.2 48.3,68.6"/><polygon class="st24" points="57,56.5 39.7,35.2 48.3,68.6"/><polygon class="st25" points="17.2,5.2 39.7,35.2 32.1,9.8"/><path class="st26" d="M17.2,5.2c1.1,8.3,3.2,18.8,3.2,18.8l19.4,11.2L17.2,5.2z"/><polygon class="st27" points="0,35.2 39.7,35.2 20.4,24"/><polygon class="st28" points="32.1,9.8 39.7,35.2 49.3,2.3"/><line class="st29" x1="49.3" y1="2.3" x2="39.7" y2="35.2"/><polygon class="st6" points="69.9,11.1 57.1,13.8 39.7,35.2"/><polygon class="st3" points="49.3,2.3 57.1,13.8 39.8,35.1"/><polygon class="st30" points="69.9,11.1 39.7,35.2 68.6,20.7"/><path class="st31" d="M81.4,35.2c1.5-1.8,8.8-9.3,10.4-11.4l-52,11.4L81.4,35.2z"/><polygon class="st32" points="91.8,23.8 68.6,20.7 39.7,35.2"/><path class="st33" d="M81.4,35.2c3.4,3.5,8.7,9.8,10.4,11.4l-52-11.4L81.4,35.2z"/><polygon class="st34" points="91.8,46.6 68,49.4 39.7,35.2"/><path class="st35" d="M13.9,51.2h-1.4v5.4c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-5.4H9.9c-0.1,0-0.2-0.1-0.2-0.2v-0.7c0-0.1,0.1-0.2,0.2-0.2h4c0.1,0,0.2,0.1,0.2,0.2v0.7C14.1,51.2,14,51.2,13.9,51.2"/><path class="st35" d="M18.2,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-0.2c-0.4,0.3-0.8,0.4-1.3,0.4c-0.4,0-0.8-0.1-1-0.4c-0.3-0.3-0.4-0.9-0.4-1.6V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v2.9c0,0.4,0,0.7,0.2,0.9c0.1,0.1,0.3,0.2,0.5,0.2c0.3,0,0.7-0.2,0.9-0.4V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C18.4,56.8,18.3,56.9,18.2,56.9"/><path class="st35" d="M22.9,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-2.9c0-0.8-0.1-1-0.7-1c-0.3,0-0.6,0.1-0.9,0.3v3.6c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.7c0.1,0,0.2,0.1,0.2,0.2v0.2c0.5-0.3,0.8-0.4,1.3-0.4c1.2,0,1.4,0.9,1.4,2v2.9C23,56.8,22.9,56.9,22.9,56.9"/><path class="st35" d="M24.8,51.1H24c-0.1,0-0.2-0.1-0.2-0.2v-0.8c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2V51C25,51.1,24.9,51.1,24.8,51.1 M24.8,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C25,56.8,24.9,56.9,24.8,56.9"/><path class="st35" d="M27.3,56.9c-0.3,0-1,0-1.5-0.2c-0.1,0-0.2-0.1-0.2-0.2V56c0-0.1,0.1-0.1,0.1-0.1h0c0.4,0.1,1.1,0.1,1.4,0.1c0.5,0,0.6-0.2,0.6-0.4c0-0.2-0.1-0.3-0.4-0.5l-1.1-0.8c-0.4-0.3-0.7-0.7-0.7-1.2c0-0.9,0.5-1.3,1.6-1.3c0.7,0,1,0.1,1.5,0.2c0.1,0,0.1,0.1,0.1,0.2v0.5c0,0.1-0.1,0.2-0.1,0.2h0c-0.2,0-0.9-0.1-1.4-0.1c-0.4,0-0.6,0.1-0.6,0.4c0,0.1,0.1,0.2,0.3,0.4l1.1,0.7c0.7,0.5,0.8,0.9,0.8,1.4C28.9,56.3,28.4,56.9,27.3,56.9"/><path class="st35" d="M30.6,51.1h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-0.8c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2V51C30.8,51.1,30.7,51.1,30.6,51.1 M30.6,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C30.7,56.8,30.7,56.9,30.6,56.9"/><path class="st35" d="M35.2,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.9,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C35.4,54.7,35.3,54.7,35.2,54.7 M34.3,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L34.3,53.9L34.3,53.9z"/><path class="st35" d="M41.8,51.2h-1.4v5.4c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-5.4h-1.4c-0.1,0-0.2-0.1-0.2-0.2v-0.7c0-0.1,0.1-0.2,0.2-0.2h4c0.1,0,0.2,0.1,0.2,0.2v0.7C41.9,51.2,41.9,51.2,41.8,51.2"/><path class="st35" d="M46.1,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.9,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C46.2,54.7,46.2,54.7,46.1,54.7 M45.2,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L45.2,53.9L45.2,53.9z"/><path class="st35" d="M47.9,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-6.5c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v6.5C48.1,56.8,48,56.9,47.9,56.9"/><path class="st35" d="M52.6,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.2,0,0.2,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.8,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C52.7,54.7,52.7,54.7,52.6,54.7 M51.7,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L51.7,53.9L51.7,53.9z"/><path class="st35" d="M56.2,56.8c-0.2,0.1-0.6,0.1-1.1,0.1c-1.1,0-1.9-0.7-1.9-2.2v-0.8c0-1.5,0.8-2.2,1.9-2.2c0.5,0,0.9,0.1,1.1,0.1c0.1,0,0.2,0.1,0.2,0.2v0.6c0,0.1-0.1,0.1-0.1,0.1h0c-0.3,0-0.5-0.1-1.1-0.1c-0.4,0-0.8,0.2-0.8,1.2v0.8c0,0.9,0.4,1.2,0.8,1.2c0.5,0,0.7,0,1.1-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6C56.4,56.7,56.3,56.8,56.2,56.8"/><path class="st35" d="M58.9,56.9c-1.3,0-2-0.9-2-2.2V54c0-1.3,0.7-2.2,2-2.2c1.3,0,1.9,1,1.9,2.2v0.7C60.8,56,60.2,56.9,58.9,56.9 M59.8,54c0-0.7-0.3-1.2-0.9-1.2c-0.6,0-0.9,0.5-0.9,1.2v0.7c0,0.7,0.3,1.2,0.9,1.2c0.6,0,0.9-0.5,0.9-1.2V54z"/><path class="st35" d="M67.3,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-3.1c0-0.7-0.1-0.9-0.6-0.9c-0.2,0-0.5,0.1-0.8,0.2c0,0.2,0,0.4,0,0.6v3.1c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-3.1c0-0.7-0.1-0.9-0.6-0.9c-0.2,0-0.4,0.1-0.8,0.3v3.6c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.7c0.1,0,0.2,0.1,0.2,0.2v0.2c0.3-0.2,0.7-0.4,1.2-0.4c0.5,0,0.8,0.2,1,0.4c0.4-0.3,0.8-0.4,1.3-0.4c1.1,0,1.4,0.8,1.4,1.9v3.1C67.4,56.8,67.3,56.9,67.3,56.9"/><path class="st35" d="M9.9,20.4v3.4H19v19.1c0,3.7,2.3,5,5,5h3.8V23.8h4.5c2.7,0,4.9-2.5,4.9-4.7v-3.4H14.8C11.6,15.7,9.9,18.3,9.9,20.4"/><path class="st35" d="M45,15.8c-3.2,0-5,2.5-5,4.7v3.4h9.1v19.1c0,3.7,2.3,5,5,5H58V23.8h4.5c2.7,0,4.9-2.5,4.9-4.7v-3.4H45z"/></g></svg>
+      </div>
+      <div>
+        <div class="brand-name">TT AI</div>
+        <div class="brand-sub">Investigation</div>
+      </div>
+    </div>
+    <div class="nav-item active" id="navNew" onclick="showView('new')">Nouvelle investigation</div>
+    <div class="nav-item" id="navHistory" onclick="showView('history')">Historique</div>
+    <div class="nav-item disabled">Connaissances <span class="soon">à venir</span></div>
+    <div class="sidebar-footer">
+      Connecté en tant que <span class="who" id="loggedInUser"></span> (<span id="loggedInRole"></span>)
+      <span class="logout" id="logoutLink" onclick="logout()">Se déconnecter</span>
+    </div>
+  </aside>
 
-    <div class="result" id="resultBox">
-      <div class="card">
-        <h3>Classification</h3>
-        <span class="badge" id="categoryBadge"></span><span class="confidence-badge" id="confidenceBadge"></span>
-        <div style="margin-top:8px; font-size:13px; color:#555;">
-          Numero client detecte: <strong id="msisdnValue"></strong>
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1>Investigation</h1>
+        <div class="sub">Assistant IA — Réclamations Tunisie Telecom</div>
+      </div>
+      <div class="bell-wrap">
+        <div class="bell-btn" onclick="document.getElementById('notifPanel').classList.toggle('open')">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        </div>
+        <div class="notif-panel" id="notifPanel">
+          <div class="notif-header">Notifications</div>
+          <div class="notif-empty">Aucune notification pour le moment.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div id="newInvestigationView">
+        <div class="stats-strip">
+          <div class="stat-block"><div class="stat-value" id="statToday">—</div><div class="stat-label">Investigations aujourd'hui</div></div>
+          <div class="stat-block"><div class="stat-value" id="statAvgConfidence">—</div><div class="stat-label">Confiance moyenne</div></div>
+        </div>
+
+        <div class="card">
+          <h3>Nouvelle réclamation</h3>
+          <textarea id="complaintText" placeholder="Exemple: Client 21693926356 se plaint que son solde diminue chaque jour a cause d'un abonnement SMS+..."></textarea>
+          <br>
+          <button id="submitBtn" onclick="submitComplaint()" style="margin-top:12px;">Analyser la réclamation</button>
+
+          <div class="investigating-block" id="investigatingBlock">
+            <div class="spinner"></div>
+            <div class="investigating-text">
+              <div class="t">Analyse en cours…</div>
+              <div class="d">Interrogation des données réelles du client. Cela prend généralement quelques secondes.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="result" id="resultBox">
+          <div class="card">
+            <h3>Résultat</h3>
+
+            <div class="badge-row">
+              <span class="badge-label">Classification</span>
+              <span class="badge" id="categoryBadge"></span>
+              <span class="confidence-badge" id="confidenceBadge"></span>
+            </div>
+            <div class="msisdn-line">Numéro client détecté : <span class="mono" id="msisdnValue"></span></div>
+
+            <div class="explanation-text" id="explanationText"></div>
+
+            <div class="evidence-divider">
+              <span class="badge-label">Preuve</span>
+              <span class="confidence-badge" id="matchConfidenceBadge" style="display:none;"></span>
+              <span class="mono" id="evidenceCoverageText" style="font-size:11px; color:var(--tt-text-soft);"></span>
+            </div>
+            <div class="evidence-note" id="evidenceNote"><span class="tech-note-label">Détail technique :</span><span id="evidenceNoteText"></span></div>
+            <div class="evidence-summary" id="evidenceSummary" style="display:none;"></div>
+            <div id="evidenceBox"></div>
+          </div>
+        </div>
+
+        <div class="secondary-row">
+          <div class="card">
+            <h3>Comment ça marche</h3>
+            <div class="howitworks-steps">
+              <div class="hiw-row">
+                <div class="hiw-dot">1</div>
+                <div class="hiw-text"><div class="t">Classification</div><div class="d">L'IA identifie la catégorie de la réclamation et le numéro client.</div></div>
+              </div>
+              <div class="hiw-row">
+                <div class="hiw-dot">2</div>
+                <div class="hiw-text"><div class="t">Recherche</div><div class="d">Interrogation des données réelles (voix, data, SMS, SOS) sur la période pertinente.</div></div>
+              </div>
+              <div class="hiw-row">
+                <div class="hiw-dot">3</div>
+                <div class="hiw-text"><div class="t">Corrélation</div><div class="d">Les preuves trouvées sont recoupées pour confirmer ou infirmer la cause.</div></div>
+              </div>
+              <div class="hiw-row">
+                <div class="hiw-dot">4</div>
+                <div class="hiw-text"><div class="t">Diagnostic</div><div class="d">Résultat avec un niveau de confiance honnête, jamais inventé.</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Investigations récentes</h3>
+            <div id="recentTicketList" class="empty-text">Chargement...</div>
+            <a class="see-all-link" onclick="showView('history')">Voir tout l'historique →</a>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <h3>Preuves recuperees</h3>
-        <div style="margin-bottom:6px;">
-          <span class="confidence-badge" id="matchConfidenceBadge" style="display:none;"></span>
+      <div id="historyView" style="display:none;">
+        <div class="card">
+          <h3>Historique des investigations</h3>
+          <div class="history-filters">
+            <select id="historyFilterCategory">
+              <option value="">Toutes les catégories</option>
+              <option value="VOICE_EXPIRATION">VOICE_EXPIRATION</option>
+              <option value="DATA_USAGE">DATA_USAGE</option>
+              <option value="SMS_VAS">SMS_VAS</option>
+              <option value="SOS_CREDIT">SOS_CREDIT</option>
+              <option value="BALANCE_DEDUCTION">BALANCE_DEDUCTION</option>
+            </select>
+            <input type="text" id="historyFilterMsisdn" placeholder="Filtrer par numéro (MSISDN)">
+            <button onclick="loadHistory()">Filtrer</button>
+            <button onclick="loadHistory()" title="Recharger la liste sans changer les filtres">Actualiser</button>
+          </div>
+          <div id="historyStatus" class="empty-text"></div>
+          <div class="evidence-table-wrapper" id="historyTableWrapper" style="display:none;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th><th>Agent</th><th>Catégorie</th><th>Numéro</th>
+                  <th>Palier de recherche</th><th>Confiance</th><th>Couverture</th><th>Preuves</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody"></tbody>
+            </table>
+          </div>
         </div>
-        <div class="evidence-note" id="evidenceNote"></div>
-        <div class="evidence-summary" id="evidenceSummary" style="display:none;"></div>
-        <div id="evidenceBox"></div>
       </div>
 
-      <div class="card">
-        <h3>Explication</h3>
-        <div class="explanation-text" id="explanationText"></div>
+      <div id="ticketDetailView" style="display:none;">
+        <div class="back-link" id="detailBackLink" onclick="goBackFromDetail()">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <span id="detailBackLabel">Retour</span>
+        </div>
+
+        <div class="card">
+          <div class="detail-title-row">
+            <h3 style="margin-bottom:0;">Dossier d'investigation</h3>
+            <span class="detail-id mono" id="detailTicketId"></span>
+          </div>
+
+          <div class="badge-row" style="margin-top:10px;">
+            <span class="badge-label">Classification</span>
+            <span class="badge" id="detailCategoryBadge"></span>
+          </div>
+          <div class="msisdn-line">Numéro client détecté : <span class="mono" id="detailMsisdn"></span></div>
+
+          <div class="explanation-text" id="detailExplanation"></div>
+
+          <div class="evidence-divider">
+            <span class="badge-label">Preuve</span>
+            <span class="confidence-badge" id="detailMatchConf" style="display:none;"></span>
+          </div>
+          <div class="evidence-note" id="detailEvidenceNoteWrap" style="display:none;">
+            <span class="tech-note-label">Détail technique :</span><span id="detailEvidenceNote"></span>
+          </div>
+          <div class="evidence-summary" id="detailEvidenceSummary" style="display:none;"></div>
+          <div id="detailEvidenceBox"></div>
+        </div>
+
+        <div class="card">
+          <h3>Historique pour ce numéro</h3>
+          <div id="relatedHistoryList" class="empty-text">Chargement...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -334,12 +555,12 @@ async function login() {
     authUsername = username;
     authRole = data.role;
 
-    document.getElementById('loginBox').style.display = 'none';
-    document.getElementById('appBox').style.display = 'block';
-    document.getElementById('loggedInBar').style.display = 'block';
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appShell').classList.add('visible');
     document.getElementById('loggedInUser').textContent = authUsername;
     document.getElementById('loggedInRole').textContent = authRole;
     statusEl.textContent = '';
+    showView('new');
   } catch (err) {
     statusEl.innerHTML = '<span id="loginError">Erreur de connexion au serveur: ' + err.message + '</span>';
   } finally {
@@ -351,13 +572,301 @@ function logout() {
   authToken = null;
   authUsername = null;
   authRole = null;
-  document.getElementById('loginBox').style.display = 'block';
-  document.getElementById('appBox').style.display = 'none';
-  document.getElementById('loggedInBar').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appShell').classList.remove('visible');
   document.getElementById('loginUsername').value = '';
   document.getElementById('loginPassword').value = '';
   document.getElementById('resultBox').style.display = 'none';
   document.getElementById('complaintText').value = '';
+}
+
+function showView(view) {
+  const isNew = view === 'new';
+  document.getElementById('newInvestigationView').style.display = isNew ? 'block' : 'none';
+  document.getElementById('historyView').style.display = isNew ? 'none' : 'block';
+  document.getElementById('ticketDetailView').style.display = 'none';
+  document.getElementById('navNew').classList.toggle('active', isNew);
+  document.getElementById('navHistory').classList.toggle('active', !isNew);
+  if (isNew) {
+    loadStats();
+    loadRecentCards();
+  } else {
+    loadHistory();
+  }
+}
+
+function formatSearchTier(tier) {
+  if (!tier) return '';
+  return tier;
+}
+
+async function loadStats() {
+  const todayEl = document.getElementById('statToday');
+  const avgEl = document.getElementById('statAvgConfidence');
+  if (!authToken) return;
+
+  try {
+    const response = await fetch('/investigations/stats', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    todayEl.textContent = data.investigations_today ?? '—';
+    avgEl.textContent = (data.avg_confidence_pct !== null && data.avg_confidence_pct !== undefined)
+      ? data.avg_confidence_pct + '%' : '—';
+  } catch (err) {
+    // Non-critical -- leave the dashes rather than blocking the view.
+  }
+}
+
+function ticketCardHtml(h) {
+  const confClass = h.match_confidence ? h.match_confidence.toLowerCase() : 'low';
+  const confLabel = h.match_confidence ? (CONFIDENCE_LABELS[h.match_confidence] || h.match_confidence) : '—';
+  const dateStr = h.created_at ? h.created_at.slice(0, 16).replace('T', ' ') : '';
+  return `
+    <div class="ticket-card" onclick="showTicketDetail(${h.log_id}, 'new')">
+      <div class="ticket-left">
+        <div class="cat">${h.category || ''}</div>
+        <div class="meta">${h.msisdn || ''} · ${dateStr}</div>
+      </div>
+      <div class="ticket-right">
+        <span class="confidence-badge confidence-${confClass}">${confLabel}</span>
+        <svg class="ticket-chevron" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>`;
+}
+
+async function loadRecentCards() {
+  const list = document.getElementById('recentTicketList');
+  if (!authToken) return;
+
+  try {
+    const response = await fetch('/investigations/history?limit=15', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    const withDetail = (data.history || []).filter(h => h.has_detail).slice(0, 3);
+
+    if (withDetail.length === 0) {
+      list.className = 'empty-text';
+      list.textContent = 'Aucune investigation récente à afficher.';
+      return;
+    }
+    list.className = '';
+    list.innerHTML = withDetail.map(ticketCardHtml).join('');
+  } catch (err) {
+    list.className = 'empty-text';
+    list.textContent = 'Erreur lors du chargement.';
+  }
+}
+
+async function loadHistory() {
+  const statusEl = document.getElementById('historyStatus');
+  const wrapper = document.getElementById('historyTableWrapper');
+  const tbody = document.getElementById('historyTableBody');
+
+  if (!authToken) {
+    statusEl.textContent = 'Session expiree. Veuillez vous reconnecter.';
+    return;
+  }
+
+  const category = document.getElementById('historyFilterCategory').value;
+  const msisdn = document.getElementById('historyFilterMsisdn').value.trim();
+
+  statusEl.textContent = 'Chargement...';
+  wrapper.style.display = 'none';
+
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  if (msisdn) params.set('msisdn', msisdn);
+  params.set('limit', '50');
+
+  try {
+    const response = await fetch('/investigations/history?' + params.toString(), {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+
+    if (response.status === 401) {
+      statusEl.textContent = 'Session expiree. Veuillez vous reconnecter.';
+      return;
+    }
+
+    const data = await response.json();
+    const history = data.history || [];
+
+    if (history.length === 0) {
+      statusEl.textContent = 'Aucune investigation trouvee pour ces filtres.';
+      wrapper.style.display = 'none';
+      return;
+    }
+
+    statusEl.textContent = '';
+    let html = '';
+    history.forEach(h => {
+      const dateStr = h.created_at ? h.created_at.slice(0, 16).replace('T', ' ') : '';
+      const confClass = h.match_confidence ? ('confidence-badge confidence-' + h.match_confidence.toLowerCase()) : '';
+      const confLabel = h.match_confidence ? (CONFIDENCE_LABELS[h.match_confidence] || h.match_confidence) : '—';
+      const coverage = h.evidence_coverage
+        ? `${h.evidence_coverage.distinct_buckets} src, ${h.evidence_coverage.distinct_dates} j`
+        : '—';
+      // Rows only get a "case file" when real evidence was persisted --
+      // a not_found row has nothing to open, so it stays a plain row
+      // rather than faking a detail page for an empty result.
+      const rowAttrs = h.has_detail ? ` class="has-detail" onclick="showTicketDetail(${h.log_id}, 'history')"` : '';
+      const chevron = h.has_detail
+        ? '<svg class="row-chevron" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>'
+        : '';
+      html += '<tr' + rowAttrs + '>';
+      html += '<td class="mono">' + dateStr + '</td>';
+      html += '<td>' + (h.username || '') + '</td>';
+      html += '<td>' + (h.category || '') + '</td>';
+      html += '<td class="mono">' + (h.msisdn || '') + '</td>';
+      html += '<td class="mono">' + formatSearchTier(h.search_tier) + '</td>';
+      html += '<td>' + (h.match_confidence ? '<span class="' + confClass + '">' + confLabel + '</span>' : '—') + '</td>';
+      html += '<td class="coverage-cell">' + coverage + '</td>';
+      html += '<td class="mono">' + (h.rows_returned ?? '—') + '</td>';
+      html += '<td>' + chevron + '</td>';
+      html += '</tr>';
+    });
+    tbody.innerHTML = html;
+    wrapper.style.display = 'block';
+  } catch (err) {
+    statusEl.textContent = 'Erreur lors du chargement de l\'historique: ' + err.message;
+  }
+}
+
+let lastDetailOrigin = 'new';
+
+function renderEvidenceInto(evidence, summaryEl, boxEl) {
+  if (Array.isArray(evidence) && evidence.length > 0) {
+    const keys = Object.keys(evidence[0]);
+    const montantKey = keys.includes('CHARGE_AMOUNT') ? 'CHARGE_AMOUNT' : (keys.includes('AMOUNT') ? 'AMOUNT' : null);
+    let summaryHtml = '<div>Enregistrements: <span class="stat-value">' + evidence.length + '</span></div>';
+    if (montantKey) {
+      const total = evidence.reduce((sum, row) => sum + (row[montantKey] || 0), 0);
+      summaryHtml += '<div>Montant total: <span class="stat-value">' + total.toFixed(2) + ' DT</span></div>';
+    }
+    summaryEl.innerHTML = summaryHtml;
+    summaryEl.style.display = 'flex';
+
+    let html = '<div class="evidence-table-wrapper"><table><thead><tr>';
+    keys.forEach(k => html += '<th>' + (COLUMN_LABELS[k] || k) + '</th>');
+    html += '</tr></thead><tbody>';
+    evidence.forEach(row => {
+      html += '<tr>';
+      keys.forEach(k => html += '<td>' + formatCell(k, row[k]) + '</td>');
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    boxEl.innerHTML = html;
+  } else {
+    summaryEl.style.display = 'none';
+    boxEl.innerHTML = '<span class="empty-text">Aucune preuve trouvee pour cette periode.</span>';
+  }
+}
+
+async function showTicketDetail(logId, fromView) {
+  if (!authToken) return;
+  lastDetailOrigin = fromView || lastDetailOrigin;
+
+  document.getElementById('newInvestigationView').style.display = 'none';
+  document.getElementById('historyView').style.display = 'none';
+  document.getElementById('ticketDetailView').style.display = 'block';
+  document.getElementById('detailBackLabel').textContent =
+    lastDetailOrigin === 'history' ? "Retour à l'historique" : "Retour aux investigations récentes";
+  document.getElementById('navNew').classList.remove('active');
+  document.getElementById('navHistory').classList.remove('active');
+
+  document.getElementById('detailTicketId').textContent = 'INV-' + logId;
+  document.getElementById('detailExplanation').textContent = 'Chargement...';
+  document.getElementById('relatedHistoryList').textContent = 'Chargement...';
+
+  try {
+    const response = await fetch('/investigations/' + logId, {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    if (response.status === 404) {
+      document.getElementById('detailExplanation').textContent = 'Ce dossier n\'est plus disponible.';
+      return;
+    }
+    if (!response.ok) {
+      document.getElementById('detailExplanation').textContent = 'Erreur lors du chargement du dossier.';
+      return;
+    }
+    const t = await response.json();
+
+    document.getElementById('detailCategoryBadge').textContent = t.category || '';
+    document.getElementById('detailMsisdn').textContent = t.msisdn || '';
+    document.getElementById('detailExplanation').textContent = t.explanation || 'Aucune explication disponible.';
+
+    const matchConfEl = document.getElementById('detailMatchConf');
+    if (t.match_confidence) {
+      matchConfEl.textContent = CONFIDENCE_LABELS[t.match_confidence] || t.match_confidence;
+      matchConfEl.className = 'confidence-badge confidence-' + t.match_confidence.toLowerCase();
+      matchConfEl.style.display = 'inline-block';
+    } else {
+      matchConfEl.style.display = 'none';
+    }
+
+    const noteWrap = document.getElementById('detailEvidenceNoteWrap');
+    if (t.search_note) {
+      document.getElementById('detailEvidenceNote').textContent = t.search_note;
+      noteWrap.style.display = 'block';
+    } else {
+      noteWrap.style.display = 'none';
+    }
+
+    renderEvidenceInto(t.evidence, document.getElementById('detailEvidenceSummary'), document.getElementById('detailEvidenceBox'));
+
+    await loadRelatedHistory(t.msisdn, logId);
+  } catch (err) {
+    document.getElementById('detailExplanation').textContent = 'Erreur lors du chargement du dossier: ' + err.message;
+  }
+}
+
+async function loadRelatedHistory(msisdn, currentLogId) {
+  const list = document.getElementById('relatedHistoryList');
+  if (!msisdn) {
+    list.className = 'empty-text';
+    list.textContent = 'Aucune autre investigation trouvée pour ce numéro.';
+    return;
+  }
+
+  try {
+    const response = await fetch('/investigations/history?msisdn=' + encodeURIComponent(msisdn) + '&limit=20', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    const data = await response.json();
+    const related = (data.history || []).filter(h => h.log_id !== currentLogId);
+
+    if (related.length === 0) {
+      list.className = 'empty-text';
+      list.textContent = 'Aucune autre investigation trouvée pour ce numéro.';
+      return;
+    }
+
+    list.className = '';
+    list.innerHTML = related.map(h => {
+      const dateStr = h.created_at ? h.created_at.slice(0, 10) : '';
+      const confClass = h.match_confidence ? h.match_confidence.toLowerCase() : 'low';
+      const confLabel = h.match_confidence ? (CONFIDENCE_LABELS[h.match_confidence] || h.match_confidence) : '—';
+      const clickable = h.has_detail ? `onclick="showTicketDetail(${h.log_id}, lastDetailOrigin)"` : '';
+      return `
+        <div class="related-history-item" ${clickable} style="${h.has_detail ? '' : 'cursor:default;'}">
+          <span class="rh-cat">${h.category || ''}</span>
+          <span class="confidence-badge confidence-${confClass}">${confLabel}</span>
+          <span class="rh-date mono">${dateStr}</span>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    list.className = 'empty-text';
+    list.textContent = 'Erreur lors du chargement.';
+  }
+}
+
+function goBackFromDetail() {
+  showView(lastDetailOrigin === 'history' ? 'history' : 'new');
 }
 
 async function submitComplaint() {
@@ -374,11 +883,13 @@ async function submitComplaint() {
   }
 
   const btn = document.getElementById('submitBtn');
-  const loading = document.getElementById('loadingMsg');
+  const textarea = document.getElementById('complaintText');
+  const investigatingBlock = document.getElementById('investigatingBlock');
   const resultBox = document.getElementById('resultBox');
 
   btn.disabled = true;
-  loading.style.display = 'block';
+  textarea.disabled = true;
+  investigatingBlock.classList.add('active');
   resultBox.style.display = 'none';
 
   try {
@@ -421,51 +932,51 @@ async function submitComplaint() {
       matchConfidenceBadge.style.display = 'none';
     }
 
-    const evidenceNote = document.getElementById('evidenceNote');
-    evidenceNote.textContent = data.search_note || 'Recherche sur la periode ' + (data.classification?.event_date ? 'ancree sur le ' + data.classification.event_date : 'par defaut') + '.';
+    const coverageText = document.getElementById('evidenceCoverageText');
+    const cov = data.evidence_coverage;
+    if (cov) {
+      const sourceWord = cov.distinct_buckets <= 1 ? 'source' : 'sources';
+      const dateWord = cov.distinct_dates <= 1 ? 'jour' : 'jours';
+      coverageText.textContent = `Couverture : ${cov.distinct_buckets} ${sourceWord}, ${cov.distinct_dates} ${dateWord} (${cov.row_count} enreg.)`;
+    } else {
+      coverageText.textContent = '';
+    }
+
+    document.getElementById('evidenceNoteText').textContent = data.search_note || 'Recherche sur la periode ' + (data.classification?.event_date ? 'ancree sur le ' + data.classification.event_date : 'par defaut') + '.';
 
     const evidenceBox = document.getElementById('evidenceBox');
     const evidenceSummary = document.getElementById('evidenceSummary');
     if (data.error) {
       evidenceSummary.style.display = 'none';
       evidenceBox.innerHTML = '<span class="error-text">' + data.error + '</span>';
-    } else if (Array.isArray(data.evidence) && data.evidence.length > 0) {
-      const keys = Object.keys(data.evidence[0]);
-
-      const montantKey = keys.includes('CHARGE_AMOUNT') ? 'CHARGE_AMOUNT' : (keys.includes('AMOUNT') ? 'AMOUNT' : null);
-      let summaryHtml = '<div>Enregistrements: <span class="stat-value">' + data.evidence.length + '</span></div>';
-      if (montantKey) {
-        const total = data.evidence.reduce((sum, row) => sum + (row[montantKey] || 0), 0);
-        summaryHtml += '<div>Montant total: <span class="stat-value">' + total.toFixed(2) + ' DT</span></div>';
-      }
-      evidenceSummary.innerHTML = summaryHtml;
-      evidenceSummary.style.display = 'flex';
-
-      let html = '<div class="evidence-table-wrapper"><table><thead><tr>';
-      keys.forEach(k => html += '<th>' + (COLUMN_LABELS[k] || k) + '</th>');
-      html += '</tr></thead><tbody>';
-      data.evidence.forEach(row => {
-        html += '<tr>';
-        keys.forEach(k => html += '<td>' + formatCell(k, row[k]) + '</td>');
-        html += '</tr>';
-      });
-      html += '</tbody></table></div>';
-      evidenceBox.innerHTML = html;
     } else {
-      evidenceSummary.style.display = 'none';
-      evidenceBox.innerHTML = '<span style="color:#666;">Aucune preuve trouvee pour cette periode.</span>';
+      renderEvidenceInto(data.evidence, evidenceSummary, evidenceBox);
     }
 
     document.getElementById('explanationText').textContent = data.explanation || 'Aucune explication disponible.';
 
     resultBox.style.display = 'block';
+
+    // Keep the history, stats, and recent-cards views current in the
+    // background, so switching to them after investigating several cases
+    // in a row doesn't show stale data -- these silently refresh whether
+    // or not that view is visible right now.
+    loadHistory();
+    loadStats();
+    loadRecentCards();
   } catch (err) {
     alert('Erreur lors de la communication avec le serveur: ' + err.message);
   } finally {
     btn.disabled = false;
-    loading.style.display = 'none';
+    textarea.disabled = false;
+    investigatingBlock.classList.remove('active');
   }
 }
+
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notifPanel');
+  if (panel.classList.contains('open') && !e.target.closest('.bell-wrap')) panel.classList.remove('open');
+});
 </script>
 </body>
 </html>

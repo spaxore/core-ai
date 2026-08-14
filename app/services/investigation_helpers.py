@@ -85,6 +85,27 @@ def _full_period_total_confidence(matched_rows, total, target_amount, tolerance_
     return confidence
 
 
+def compute_evidence_coverage(matched_rows):
+    """
+    A second stat alongside confidence, answering a different question:
+    not "how well did this fit", but "how much of the evidence actually
+    went into this answer". Two matches can both be MEDIUM confidence for
+    very different reasons -- one bucket broadened once, versus four
+    unrelated sources pieced together -- and confidence alone can't tell
+    a support agent which is which. Reuses _bucket_identity, the same
+    breadth calculation _full_period_total_confidence already does
+    internally; this just keeps that result instead of throwing it away
+    after computing confidence. No new matching logic.
+    """
+    distinct_buckets = set(_bucket_identity(r) for r in matched_rows)
+    distinct_dates = set(r.get("START_DATE") for r in matched_rows if r.get("START_DATE"))
+    return {
+        "row_count": len(matched_rows),
+        "distinct_buckets": len(distinct_buckets),
+        "distinct_dates": len(distinct_dates),
+    }
+
+
 def find_best_match(evidence, target_amount, amount_field="CHARGE_AMOUNT",
                      before_field="DA_VALUE_BEFORE", after_field="DA_VALUE_AFTER",
                      tolerance_ratio=0.15, tolerance_floor=1.0):
@@ -122,7 +143,10 @@ def find_best_match(evidence, target_amount, amount_field="CHARGE_AMOUNT",
     for row in evidence:
         value = row.get(amount_field)
         if value is not None and abs(value - target_amount) <= tolerance:
-            return {"matched_rows": [row], "match_type": "single_transaction", "confidence": "HIGH"}
+            return {
+                "matched_rows": [row], "match_type": "single_transaction", "confidence": "HIGH",
+                "evidence_coverage": compute_evidence_coverage([row]),
+            }
 
     for row in evidence:
         before = row.get(before_field)
@@ -130,11 +154,17 @@ def find_best_match(evidence, target_amount, amount_field="CHARGE_AMOUNT",
         if before is not None and after is not None:
             swing = abs(before - after)
             if abs(swing - target_amount) <= tolerance:
-                return {"matched_rows": [row], "match_type": "balance_swing", "confidence": "HIGH"}
+                return {
+                    "matched_rows": [row], "match_type": "balance_swing", "confidence": "HIGH",
+                    "evidence_coverage": compute_evidence_coverage([row]),
+                }
 
     total = sum((row.get(amount_field) or 0) for row in evidence)
     if abs(total - target_amount) <= tolerance:
         confidence = _full_period_total_confidence(evidence, total, target_amount, tolerance_ratio)
-        return {"matched_rows": evidence, "match_type": "full_period_total", "confidence": confidence}
+        return {
+            "matched_rows": evidence, "match_type": "full_period_total", "confidence": confidence,
+            "evidence_coverage": compute_evidence_coverage(evidence),
+        }
 
     return None

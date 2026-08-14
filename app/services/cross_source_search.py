@@ -27,7 +27,7 @@ Used two ways:
   or an SOS credit recovery instead, before honestly giving up.
 """
 from app.database.oracle import get_connection
-from app.services.investigation_helpers import find_best_match
+from app.services.investigation_helpers import find_best_match, compute_evidence_coverage
 
 SOURCES = ["VOICE", "DATA", "SMS_VAS", "SOS_CREDIT"]
 CONFIDENCE_RANK = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
@@ -96,6 +96,12 @@ def search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date=
     for row in match["matched_rows"]:
         row["_SOURCE"] = source
 
+    # Recomputed after _SOURCE tagging above (find_best_match ran before the
+    # rows were tagged), so a full_period_total match spanning several
+    # cross-source rows correctly counts them as distinct sources here, not
+    # just distinct DA/LOAN buckets.
+    evidence_coverage = compute_evidence_coverage(match["matched_rows"])
+
     confidence = match["confidence"]
     caveat = " -- treat as a possible lead, not a confirmed cause" if confidence == "LOW" else ""
     window_desc = str(single_day) if tier == "cross_source_single_day" else f"{s_date}..{e_date}"
@@ -105,6 +111,7 @@ def search_all_sources(msisdn, start_date, end_date, target_amount, anchor_date=
         "search_tier": tier,
         "da_value_used": None,
         "confidence": confidence,
+        "evidence_coverage": evidence_coverage,
         "note": f"Matched via {match['match_type']} in {source} ({window_desc}), confidence={confidence} -- not necessarily the mechanism the customer described{caveat}.",
     }
 
