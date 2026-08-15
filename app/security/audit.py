@@ -220,24 +220,34 @@ def get_investigation_history(limit: int = 50, category: str = None, msisdn: str
     cursor.close()
     conn.close()
 
-    # Lazy import for the same reason as REDTEAM_EXEMPT_USERS above --
-    # investigation_results.py doesn't import audit.py, but keeping the
-    # pattern consistent (and avoiding a module-load-order dependency on
-    # a sibling services/ package from a security/ one) is deliberate.
-    from app.services.investigation_results import get_result_log_ids
+    # Lazy imports for the same reason as REDTEAM_EXEMPT_USERS above --
+    # neither sibling module imports audit.py, but keeping the pattern
+    # consistent (and avoiding a module-load-order dependency on a
+    # sibling package from a security/ one) is deliberate.
+    from app.services.investigation_results import get_result_log_ids, get_superseded_map
+    from app.ai.case_memory import get_verified_case_status_map
 
     log_ids = [r[0] for r in rows]
     detailed_ids = get_result_log_ids(log_ids)
+    verified_status_by_log_id = get_verified_case_status_map(log_ids)
+    superseded_by_log_id_map = get_superseded_map(log_ids)
 
     history = []
     for log_id, username, role, details, created_at in rows:
         parsed = _parse_investigation_details(details)
+        # Corrected takes priority over validated/rejected -- a ticket
+        # that's been re-investigated is no longer "the current answer"
+        # regardless of what status it carried before the correction.
+        superseded_by_log_id = superseded_by_log_id_map.get(log_id)
+        verification_status = "corrected" if superseded_by_log_id else verified_status_by_log_id.get(log_id)
         history.append({
             "log_id": log_id,
             "username": username,
             "role": role,
             "created_at": created_at.isoformat() if created_at else None,
             "has_detail": log_id in detailed_ids,
+            "verification_status": verification_status,
+            "superseded_by_log_id": superseded_by_log_id,
             **parsed,
         })
     return history

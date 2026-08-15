@@ -38,11 +38,23 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(circle at 30% 20%, rgba(25,120,182,0.08), transparent 55%),
-                radial-gradient(circle at 80% 80%, rgba(46,186,160,0.08), transparent 50%),
-                var(--tt-surface);
+    background: var(--tt-surface);
+    overflow: hidden;
   }
+  .glow-blob { position: absolute; border-radius: 50%; filter: blur(50px); opacity: .85; pointer-events: none; }
+  .glow-blob.b1 {
+    width: 460px; height: 460px; background: radial-gradient(circle, rgba(25,120,182,0.55), transparent 70%);
+    top: -12%; left: 2%; animation: drift1 14s ease-in-out infinite;
+  }
+  .glow-blob.b2 {
+    width: 420px; height: 420px; background: radial-gradient(circle, rgba(46,186,160,0.50), transparent 70%);
+    bottom: -18%; right: 4%; animation: drift2 17s ease-in-out infinite;
+  }
+  @keyframes drift1 { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,30px) scale(1.08); } }
+  @keyframes drift2 { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-35px,-25px) scale(1.08); } }
   .login-card {
+    position: relative;
+    z-index: 1;
     width: 360px;
     background: var(--tt-card);
     border: 1px solid var(--tt-border);
@@ -92,8 +104,9 @@
   #appShell.visible { display: flex; }
 
   .sidebar {
-    width: 220px; flex-shrink: 0; background: var(--tt-ink); color: #DDEEEC;
-    padding: 20px 14px; display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; width: 220px; flex-shrink: 0;
+    background: var(--tt-ink); color: #DDEEEC; padding: 20px 14px; display: flex;
+    flex-direction: column; overflow-y: auto; z-index: 10;
   }
   .brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 22px 8px; }
   .brand-logo { width: 36px; height: 24px; flex-shrink: 0; }
@@ -105,11 +118,12 @@
   .nav-item.active { background: var(--tt-teal-soft); color: #7FE0CE; }
   .nav-item.disabled { opacity: .45; cursor: default; }
   .nav-item .soon { margin-left: auto; font-size: 9px; background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 999px; }
+  .nav-icon { width: 15px; height: 15px; stroke: currentColor; flex-shrink: 0; }
   .sidebar-footer { margin-top: auto; padding: 10px 8px; font-size: 11px; color: #6C8E89; }
   .sidebar-footer .who { color: #DDEEEC; font-weight: 600; }
   .sidebar-footer .logout { display: block; margin-top: 4px; color: #7FE0CE; text-decoration: underline; cursor: pointer; }
 
-  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; margin-left: 220px; }
   .topbar {
     height: 60px; border-bottom: 1px solid var(--tt-border); background: var(--tt-card);
     display: flex; align-items: center; justify-content: space-between; padding: 0 26px; flex-shrink: 0;
@@ -132,6 +146,15 @@
   .notif-panel.open { display: block; }
   .notif-header { padding: 12px 14px; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--tt-border); }
   .notif-empty { padding: 16px 14px; font-size: 12px; color: var(--tt-text-soft); }
+
+  .global-back-btn {
+    width: 34px; height: 34px; border-radius: 9px; background: var(--tt-surface);
+    border: 1px solid var(--tt-border); display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; padding: 0; cursor: pointer;
+  }
+  .global-back-btn svg { width: 16px; height: 16px; stroke: var(--tt-text-soft); }
+  .global-back-btn:hover { background: var(--tt-blue-soft); }
+  .global-back-btn:hover svg { stroke: var(--tt-blue-dark); }
 
   .content { flex: 1; overflow-y: auto; padding: 26px; width: 100%; }
   .card { background: var(--tt-card); border: 1px solid var(--tt-border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow-card); }
@@ -210,6 +233,8 @@
   .stat-block:first-child { border-radius: 12px 0 0 12px; }
   .stat-block:last-child { border-radius: 0 12px 12px 0; }
   .stat-block:not(:last-child) { border-right: none; }
+  .stat-block.clickable { cursor: pointer; transition: background .12s ease; }
+  .stat-block.clickable:hover { background: var(--tt-surface); }
   .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; color: var(--tt-blue-dark); }
   .stat-label { font-size: 11px; color: var(--tt-text-soft); margin-top: 2px; }
 
@@ -251,15 +276,63 @@
   .back-link:hover { color: var(--tt-blue-dark); }
   .detail-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
   .detail-id { font-size: 11px; color: var(--tt-text-soft); font-family: 'IBM Plex Mono', monospace; }
+  .copy-btn {
+    background: none; border: 1px solid var(--tt-border); color: var(--tt-text-soft);
+    padding: 4px 9px; border-radius: 7px; font-size: 10.5px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 5px; cursor: pointer; margin-left: 8px;
+  }
+  .copy-btn:hover { background: var(--tt-surface); color: var(--tt-blue-dark); }
+  .copy-btn svg { width: 11px; height: 11px; }
+
+  /* ---- Validation status: Valider/Rejeter, wired to
+     POST /investigations/{log_id}/verify -- turns a reviewed ticket into
+     real case-memory precedent (see app/ai/case_memory.py). Corriger is
+     a different action: it edits the complaint text and fires a real new
+     investigation rather than mutating this one in place (see
+     submitCorrection / POST /investigations/{log_id}/correct). Rendered
+     twice (Résultat card + ticket detail view) via a shared scope-based
+     id lookup (STATUS_IDS), since an agent should be able to act right
+     after investigating, not only by navigating to History. ---- */
+  .status-row { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--tt-surface); border-radius: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .status-label-text { font-size: 11px; color: var(--tt-text-soft); text-transform: uppercase; letter-spacing: .04em; }
+  .status-badge { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px; }
+  .status-ai_generated, .status-none { background: var(--tt-gray-soft); color: #5B6E73; }
+  .status-human_validated { background: var(--tt-green-soft); color: #1E8A54; }
+  .status-corrected { background: var(--tt-amber-soft); color: #8A6200; }
+  .status-rejected { background: var(--tt-red-soft); color: #B01E26; }
+  .status-actions { display: flex; gap: 8px; margin-left: auto; }
+  .status-btn { padding: 7px 13px; font-size: 12px; border-radius: 8px; }
+  .status-btn.validate { background: var(--tt-green); }
+  .status-btn.validate:hover { background: #259456; }
+  .status-btn.correct { background: var(--tt-amber); color: #5A4300; }
+  .status-btn.correct:hover { background: #E8AD1E; }
+  .status-btn.reject { background: var(--tt-card); color: var(--tt-red); border: 1px solid var(--tt-red-soft); }
+  .status-btn.reject:hover { background: var(--tt-red-soft); }
+  .correction-box { display: none; margin-top: 10px; }
+  .correction-box.open { display: block; }
+  .correction-label { font-size: 11px; color: var(--tt-text-soft); display: block; margin-bottom: 6px; }
+  .correction-box textarea {
+    width: 100%; min-height: 90px; padding: 10px; border: 1px solid var(--tt-border); border-radius: 8px;
+    font-family: inherit; font-size: 12.5px; background: #fff; box-sizing: border-box;
+  }
+  .correction-box button { margin-top: 8px; padding: 8px 16px; font-size: 12px; }
+  .superseded-banner {
+    display: none; margin-top: 16px; padding: 12px 16px; background: var(--tt-amber-soft);
+    border-radius: 10px; font-size: 12.5px; color: #8A6200;
+  }
+  .superseded-banner a { color: var(--tt-blue-dark); font-weight: 600; cursor: pointer; text-decoration: underline; margin-left: 6px; }
   .related-history-item {
-    display: flex; align-items: center; justify-content: space-between; padding: 9px 0;
+    display: grid; grid-template-columns: minmax(0,1fr) 120px 90px 130px; align-items: center; gap: 10px; padding: 9px 0;
     border-bottom: 1px solid var(--tt-border); font-size: 12px; cursor: pointer;
   }
   .related-history-item:last-child { border-bottom: none; }
-  #relatedHistoryList { max-height: 280px; overflow-y: auto; }
+  #relatedHistoryList { max-height: 280px; overflow-y: auto; overflow-x: hidden; }
   .related-history-item:hover { color: var(--tt-blue-dark); }
-  .related-history-item .rh-cat { font-weight: 500; }
-  .related-history-item .rh-date { color: var(--tt-text-soft); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .related-history-item .rh-cat { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .related-history-item .confidence-badge { justify-self: center; }
+  .related-history-item .rh-status { justify-self: center; }
+  .related-history-item .rh-status-empty { color: var(--tt-text-soft); }
+  .related-history-item .rh-date { color: var(--tt-text-soft); font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-align: right; white-space: nowrap; }
 
   /* ---- Known-fix #4: label the technical note so the register shift is intentional ---- */
   .tech-note-label { font-weight: 700; font-style: normal; text-transform: uppercase; font-size: 10px; letter-spacing: .04em; margin-right: 4px; }
@@ -275,7 +348,39 @@
   .confidence-high { background: var(--tt-green-soft); color: #1E8A54; }
   .confidence-medium { background: var(--tt-amber-soft); color: #8A6200; }
   .confidence-low { background: var(--tt-gray-soft); color: #5B6E73; }
+  /* Styled hover tooltip (not native title) explaining what the confidence
+     level actually means in this system's language -- one-line, matches
+     the rest of the visual language instead of the browser's default box. */
+  .confidence-badge[data-tooltip] { cursor: help; }
+  /* JS-driven (see initTooltips), not a CSS ::after -- an absolutely
+     positioned pseudo-element gets silently clipped by any scrollable
+     ancestor (#relatedHistoryList, .history-table-wrapper, ...), which is
+     exactly why tooltips near the top of those lists were invisible or
+     cut off. position:fixed on a single shared element anchored to
+     document.body never gets clipped, regardless of which scroll
+     container the badge happens to be inside. */
+  .js-tooltip {
+    display: none; position: fixed; z-index: 500; background: var(--tt-ink); color: #fff;
+    font-size: 10.5px; font-weight: 500; padding: 7px 10px; border-radius: 7px;
+    max-width: 220px; line-height: 1.4; box-shadow: var(--shadow-card); pointer-events: none;
+  }
   .msisdn-line { font-size: 12px; color: var(--tt-text-soft); margin-top: 8px; }
+  .cat-icon { width: 13px; height: 13px; margin-right: 5px; flex-shrink: 0; stroke: currentColor; vertical-align: -2px; }
+
+  /* ---- Sortable history columns: sorts what's already loaded (History
+     is capped at limit=50 with no true pagination today, so sorting the
+     fetched batch doesn't newly mislead anyone -- the view was already
+     silently capped before this). ---- */
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--tt-blue-dark); }
+  .sort-arrow { display: inline-block; width: 9px; opacity: .5; }
+  .sort-arrow.active { opacity: 1; color: var(--tt-blue); }
+
+  /* ---- History empty state: a filter that matches nothing, not a bug ---- */
+  .empty-state { text-align: center; padding: 36px 20px; color: var(--tt-text-soft); }
+  .empty-state svg { width: 34px; height: 34px; stroke: var(--tt-border); margin-bottom: 10px; }
+  .empty-state .t { font-size: 13px; font-weight: 600; color: var(--tt-text); }
+  .empty-state .d { font-size: 11.5px; margin-top: 3px; }
 
   .history-filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
   .history-filters select, .history-filters input[type="text"] {
@@ -324,6 +429,8 @@
 <body>
 
 <div id="loginScreen">
+  <div class="glow-blob b1"></div>
+  <div class="glow-blob b2"></div>
   <div class="login-card">
     <div class="login-logo">
       <svg viewBox="0 0 108.5 70.6"><style>.st0{fill:#1978B6}.st1{fill:#35A9E0}.st2{fill:#225FAD}.st3{fill:#2EBAA0}.st4{fill:#28874E}.st5{fill:#2B9A97}.st6{fill:#33A55E}.st7{fill:#EFEB63}.st8{fill:#82C564}.st9{fill:#E8262E}.st10{fill:#F1683C}.st11{fill:#FCBD2A}.st12{fill:#F89D5F}.st13{fill:#EE2E7E}.st14{fill:#762D8A}.st15{fill:#562B7B}.st16{fill:#DA5F75}.st17{fill:#F0597C}.st18{fill:#EF4137}.st19{fill:#F0522D}.st20{fill:#EF3830}.st21{fill:#E5499A}.st22{fill:#B53B88}.st23{fill:#6D2A84}.st24{fill:#D62228}.st25{fill:#21ACDB}.st26{fill:#2699BC}.st27{fill:#1E4583}.st28{fill:#2CAA9A}.st29{fill:#29B784}.st30{fill:#2EB56D}.st31{fill:#E7D555}.st32{fill:#68BF64}.st33{fill:#FAA82D}.st34{fill:#F6913F}.st35{fill:#FFFFFF}</style><g><path class="st0" d="M29.4,0.5c-0.4,0.1-2.1,0.5-2.5,0.6c-3.5,0.9-6.7,2.3-9.7,4.1l22.6,30L29.4,0.5z"/><path class="st1" d="M17.2,5.2c-3.8,2.3-7.2,5.4-9.9,9c-0.4,0.5-0.8,1-1.1,1.6l33.6,19.5L17.2,5.2z"/><path class="st2" d="M39.7,35.2L6.1,15.7C4,18.9,2.3,22.4,1.3,26.2c0,0,0,0,0,0c0,0,0,0,0,0c-0.7,2.5-1.1,6.2-1.2,8.9c0,0,0,0,0,0L39.7,35.2z"/><path class="st3" d="M39.5,0.1C38.7,0,33.7-0.2,29.4,0.5l10.4,34.7l9.6-33C45.2,1.1,42.3,0.4,39.5,0.1"/><polygon class="st4" points="39.7,35.2 73.2,12.8 66.6,9.4 62.3,7.3"/><path class="st5" d="M62.3,7.3c-2.3-1.2-3.9-1.8-5.5-2.4c-3.3-1.3-4.4-1.6-7.5-2.7l-9.6,33L62.3,7.3z"/><path class="st6" d="M91.8,23.8c-7-4.5-13.1-8.1-18.6-11.1c-1.1-0.6-2.2-1.1-3.3-1.7L39.7,35.2L91.8,23.8z"/><path class="st7" d="M108.5,35.2c-5-3.6-9.8-6.8-14.2-9.7c-0.8-0.6-1.7-1.1-2.5-1.6l-52,11.4L108.5,35.2z"/><polygon class="st8" points="91.8,23.8 90.8,23.2 89,22 86.9,20.7 84.4,19.2 81.3,17.4 78.5,15.7 39.7,35.2"/><polygon class="st9" points="39.7,35.2 73.1,57.7 66.6,61 62.4,63.1"/><path class="st10" d="M91.8,46.6c-4.8,3.1-9.2,5.8-13.3,8.1c-1.8,1-3.6,2-5.3,2.9c-1.1,0.6-2.2,1.1-3.2,1.7L39.7,35.2L91.8,46.6z"/><path class="st11" d="M108.5,35.2c-5,3.6-9.8,6.9-14.2,9.8c-0.8,0.6-1.7,1.1-2.5,1.6l-52-11.4L108.5,35.2z"/><polygon class="st12" points="91.8,46.6 88.1,49 84.4,51.2 81.2,53.1 78.5,54.7 39.7,35.2"/><path class="st13" d="M29.4,70c-0.4-0.1-2.1-0.4-2.5-0.6c-3.5-0.9-6.7-2.3-9.7-4.1l22.6-30.1L29.4,70z"/><path class="st14" d="M17.2,65.3c-3.8-2.3-7.2-5.4-9.9-9c-0.4-0.5-0.8-1-1.1-1.6l33.6-19.6L17.2,65.3z"/><path class="st15" d="M39.7,35.2L6.1,54.8C4,51.6,2.3,48.1,1.3,44.3c0,0,0,0,0,0c0,0,0,0,0,0c-0.7-2.5-1.1-6.3-1.3-9c0,0,0,0,0,0H39.7z"/><path class="st16" d="M39.5,70.5c-0.8,0.1-2,0.2-2,0.2c-0.4,0-1.8,0-1.8,0c-2.2,0-4.3-0.3-6.4-0.6l10.4-34.8l8.5,33.4c0,0-0.5,0.2-0.6,0.2C43.8,69.9,41.4,70.3,39.5,70.5"/><line class="st17" x1="48.3" y1="68.5" x2="39.7" y2="35.2"/><path class="st18" d="M62.4,63.1c-2.3,1.2-4,1.8-5.6,2.4c-3.3,1.3-5.4,2-8.5,3.1l-8.5-33.4L62.4,63.1z"/><path class="st19" d="M39.7,35.2l30.2,24.1c0-0.6-1.6-8-1.9-9.9L39.7,35.2z"/><path class="st20" d="M39.7,35.2L57,56.5c4.5,0.9,9.9,2.2,12.9,2.8L39.7,35.2z"/><polygon class="st21" points="17.2,65.3 39.7,35.2 32.6,59.3"/><path class="st22" d="M39.7,35.2L20.1,46.6c-0.2,1.5-1.9,15-2.9,18.7L39.7,35.2"/><polygon class="st23" points="0,35.2 39.7,35.2 20.1,46.6"/><polygon class="st13" points="32.6,59.3 39.7,35.2 48.3,68.6"/><polygon class="st24" points="57,56.5 39.7,35.2 48.3,68.6"/><polygon class="st25" points="17.2,5.2 39.7,35.2 32.1,9.8"/><path class="st26" d="M17.2,5.2c1.1,8.3,3.2,18.8,3.2,18.8l19.4,11.2L17.2,5.2z"/><polygon class="st27" points="0,35.2 39.7,35.2 20.4,24"/><polygon class="st28" points="32.1,9.8 39.7,35.2 49.3,2.3"/><line class="st29" x1="49.3" y1="2.3" x2="39.7" y2="35.2"/><polygon class="st6" points="69.9,11.1 57.1,13.8 39.7,35.2"/><polygon class="st3" points="49.3,2.3 57.1,13.8 39.8,35.1"/><polygon class="st30" points="69.9,11.1 39.7,35.2 68.6,20.7"/><path class="st31" d="M81.4,35.2c1.5-1.8,8.8-9.3,10.4-11.4l-52,11.4L81.4,35.2z"/><polygon class="st32" points="91.8,23.8 68.6,20.7 39.7,35.2"/><path class="st33" d="M81.4,35.2c3.4,3.5,8.7,9.8,10.4,11.4l-52-11.4L81.4,35.2z"/><polygon class="st34" points="91.8,46.6 68,49.4 39.7,35.2"/><path class="st35" d="M13.9,51.2h-1.4v5.4c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-5.4H9.9c-0.1,0-0.2-0.1-0.2-0.2v-0.7c0-0.1,0.1-0.2,0.2-0.2h4c0.1,0,0.2,0.1,0.2,0.2v0.7C14.1,51.2,14,51.2,13.9,51.2"/><path class="st35" d="M18.2,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-0.2c-0.4,0.3-0.8,0.4-1.3,0.4c-0.4,0-0.8-0.1-1-0.4c-0.3-0.3-0.4-0.9-0.4-1.6V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v2.9c0,0.4,0,0.7,0.2,0.9c0.1,0.1,0.3,0.2,0.5,0.2c0.3,0,0.7-0.2,0.9-0.4V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C18.4,56.8,18.3,56.9,18.2,56.9"/><path class="st35" d="M22.9,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-2.9c0-0.8-0.1-1-0.7-1c-0.3,0-0.6,0.1-0.9,0.3v3.6c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.7c0.1,0,0.2,0.1,0.2,0.2v0.2c0.5-0.3,0.8-0.4,1.3-0.4c1.2,0,1.4,0.9,1.4,2v2.9C23,56.8,22.9,56.9,22.9,56.9"/><path class="st35" d="M24.8,51.1H24c-0.1,0-0.2-0.1-0.2-0.2v-0.8c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2V51C25,51.1,24.9,51.1,24.8,51.1 M24.8,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C25,56.8,24.9,56.9,24.8,56.9"/><path class="st35" d="M27.3,56.9c-0.3,0-1,0-1.5-0.2c-0.1,0-0.2-0.1-0.2-0.2V56c0-0.1,0.1-0.1,0.1-0.1h0c0.4,0.1,1.1,0.1,1.4,0.1c0.5,0,0.6-0.2,0.6-0.4c0-0.2-0.1-0.3-0.4-0.5l-1.1-0.8c-0.4-0.3-0.7-0.7-0.7-1.2c0-0.9,0.5-1.3,1.6-1.3c0.7,0,1,0.1,1.5,0.2c0.1,0,0.1,0.1,0.1,0.2v0.5c0,0.1-0.1,0.2-0.1,0.2h0c-0.2,0-0.9-0.1-1.4-0.1c-0.4,0-0.6,0.1-0.6,0.4c0,0.1,0.1,0.2,0.3,0.4l1.1,0.7c0.7,0.5,0.8,0.9,0.8,1.4C28.9,56.3,28.4,56.9,27.3,56.9"/><path class="st35" d="M30.6,51.1h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-0.8c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2V51C30.8,51.1,30.7,51.1,30.6,51.1 M30.6,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C30.7,56.8,30.7,56.9,30.6,56.9"/><path class="st35" d="M35.2,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.9,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C35.4,54.7,35.3,54.7,35.2,54.7 M34.3,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L34.3,53.9L34.3,53.9z"/><path class="st35" d="M41.8,51.2h-1.4v5.4c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-5.4h-1.4c-0.1,0-0.2-0.1-0.2-0.2v-0.7c0-0.1,0.1-0.2,0.2-0.2h4c0.1,0,0.2,0.1,0.2,0.2v0.7C41.9,51.2,41.9,51.2,41.8,51.2"/><path class="st35" d="M46.1,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.9,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C46.2,54.7,46.2,54.7,46.1,54.7 M45.2,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L45.2,53.9L45.2,53.9z"/><path class="st35" d="M47.9,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-6.5c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v6.5C48.1,56.8,48,56.9,47.9,56.9"/><path class="st35" d="M52.6,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.2,0,0.2,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.8,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C52.7,54.7,52.7,54.7,52.6,54.7 M51.7,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L51.7,53.9L51.7,53.9z"/><path class="st35" d="M56.2,56.8c-0.2,0.1-0.6,0.1-1.1,0.1c-1.1,0-1.9-0.7-1.9-2.2v-0.8c0-1.5,0.8-2.2,1.9-2.2c0.5,0,0.9,0.1,1.1,0.1c0.1,0,0.2,0.1,0.2,0.2v0.6c0,0.1-0.1,0.1-0.1,0.1h0c-0.3,0-0.5-0.1-1.1-0.1c-0.4,0-0.8,0.2-0.8,1.2v0.8c0,0.9,0.4,1.2,0.8,1.2c0.5,0,0.7,0,1.1-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6C56.4,56.7,56.3,56.8,56.2,56.8"/><path class="st35" d="M58.9,56.9c-1.3,0-2-0.9-2-2.2V54c0-1.3,0.7-2.2,2-2.2c1.3,0,1.9,1,1.9,2.2v0.7C60.8,56,60.2,56.9,58.9,56.9 M59.8,54c0-0.7-0.3-1.2-0.9-1.2c-0.6,0-0.9,0.5-0.9,1.2v0.7c0,0.7,0.3,1.2,0.9,1.2c0.6,0,0.9-0.5,0.9-1.2V54z"/><path class="st35" d="M67.3,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-3.1c0-0.7-0.1-0.9-0.6-0.9c-0.2,0-0.5,0.1-0.8,0.2c0,0.2,0,0.4,0,0.6v3.1c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-3.1c0-0.7-0.1-0.9-0.6-0.9c-0.2,0-0.4,0.1-0.8,0.3v3.6c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.7c0.1,0,0.2,0.1,0.2,0.2v0.2c0.3-0.2,0.7-0.4,1.2-0.4c0.5,0,0.8,0.2,1,0.4c0.4-0.3,0.8-0.4,1.3-0.4c1.1,0,1.4,0.8,1.4,1.9v3.1C67.4,56.8,67.3,56.9,67.3,56.9"/><path class="st35" d="M9.9,20.4v3.4H19v19.1c0,3.7,2.3,5,5,5h3.8V23.8h4.5c2.7,0,4.9-2.5,4.9-4.7v-3.4H14.8C11.6,15.7,9.9,18.3,9.9,20.4"/><path class="st35" d="M45,15.8c-3.2,0-5,2.5-5,4.7v3.4h9.1v19.1c0,3.7,2.3,5,5,5H58V23.8h4.5c2.7,0,4.9-2.5,4.9-4.7v-3.4H45z"/></g></svg>
@@ -358,9 +465,18 @@
         <div class="brand-sub">Investigation</div>
       </div>
     </div>
-    <div class="nav-item active" id="navNew" onclick="showView('new')">Nouvelle investigation</div>
-    <div class="nav-item" id="navHistory" onclick="showView('history')">Historique</div>
-    <div class="nav-item disabled">Connaissances <span class="soon">à venir</span></div>
+    <div class="nav-item active" id="navNew" onclick="showView('new')">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Nouvelle investigation
+    </div>
+    <div class="nav-item" id="navHistory" onclick="showView('history')">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      Historique
+    </div>
+    <div class="nav-item disabled">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      Connaissances <span class="soon">à venir</span>
+    </div>
     <div class="sidebar-footer">
       Connecté en tant que <span class="who" id="loggedInUser"></span> (<span id="loggedInRole"></span>)
       <span class="logout" id="logoutLink" onclick="logout()">Se déconnecter</span>
@@ -369,9 +485,14 @@
 
   <div class="main">
     <div class="topbar">
-      <div>
-        <h1>Investigation</h1>
-        <div class="sub">Assistant IA — Réclamations Tunisie Telecom</div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="global-back-btn" id="globalBackBtn" onclick="goBack()" title="Retour" style="visibility:hidden;">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div>
+          <h1 id="pageTitle">Investigation</h1>
+          <div class="sub" id="pageSub">Assistant IA — Réclamations Tunisie Telecom</div>
+        </div>
       </div>
       <div class="bell-wrap">
         <div class="bell-btn" onclick="document.getElementById('notifPanel').classList.toggle('open')">
@@ -387,7 +508,7 @@
     <div class="content">
       <div id="newInvestigationView">
         <div class="stats-strip">
-          <div class="stat-block"><div class="stat-value" id="statToday">—</div><div class="stat-label">Investigations aujourd'hui</div></div>
+          <div class="stat-block clickable" tabindex="0" onclick="goToHistoryFilteredToday()" title="Voir les investigations d'aujourd'hui"><div class="stat-value" id="statToday">—</div><div class="stat-label">Investigations aujourd'hui</div></div>
           <div class="stat-block"><div class="stat-value" id="statAvgConfidence">—</div><div class="stat-label">Confiance moyenne</div></div>
         </div>
 
@@ -435,6 +556,25 @@
             <div class="evidence-note" id="evidenceNote"><span class="tech-note-label">Détail technique :</span><span id="evidenceNoteText"></span></div>
             <div class="evidence-summary" id="evidenceSummary" style="display:none;"></div>
             <div id="evidenceBox"></div>
+
+            <div class="status-row" id="resultStatusRow" style="display:none;">
+              <span class="status-label-text">Statut</span>
+              <span class="status-badge" id="resultStatusBadge"></span>
+              <div class="status-actions" id="resultStatusActions">
+                <button class="status-btn validate" onclick="setValidationStatus('result','human_validated')">Valider</button>
+                <button class="status-btn correct" onclick="toggleCorrectionBox('result')">Corriger</button>
+                <button class="status-btn reject" onclick="setValidationStatus('result','rejected')">Rejeter</button>
+              </div>
+            </div>
+            <div class="superseded-banner" id="resultSupersededBanner">
+              Cette investigation a été corrigée et remplacée.
+              <a onclick="void(0)" id="resultSupersededLink">Voir la nouvelle investigation →</a>
+            </div>
+            <div class="correction-box" id="resultCorrectionBox">
+              <label class="correction-label">Modifier la réclamation et relancer l'investigation</label>
+              <textarea id="resultCorrectionText"></textarea>
+              <button onclick="submitCorrection('result')">Relancer l'investigation avec la correction</button>
+            </div>
           </div>
         </div>
 
@@ -486,12 +626,22 @@
             <button onclick="loadHistory()" title="Recharger la liste sans changer les filtres">Actualiser</button>
           </div>
           <div id="historyStatus" class="empty-text"></div>
+          <div id="historyEmptyState" class="empty-state" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <div class="t">Aucun résultat</div>
+            <div class="d">Aucune investigation ne correspond à ces filtres.</div>
+          </div>
           <div class="evidence-table-wrapper" id="historyTableWrapper" style="display:none;">
             <table>
               <thead>
                 <tr>
-                  <th>Date</th><th>Agent</th><th>Catégorie</th><th>Numéro</th>
-                  <th>Palier de recherche</th><th>Confiance</th><th>Couverture</th><th>Preuves</th><th></th>
+                  <th class="sortable" onclick="sortHistory('date')">Date <span class="sort-arrow" id="sortArrowDate">↕</span></th>
+                  <th>Agent</th>
+                  <th class="sortable" onclick="sortHistory('category')">Catégorie <span class="sort-arrow" id="sortArrowCategory">↕</span></th>
+                  <th class="sortable" onclick="sortHistory('msisdn')">Numéro <span class="sort-arrow" id="sortArrowMsisdn">↕</span></th>
+                  <th>Palier de recherche</th>
+                  <th class="sortable" onclick="sortHistory('confidence')">Confiance <span class="sort-arrow" id="sortArrowConfidence">↕</span></th>
+                  <th>Couverture</th><th>Preuves</th><th>Statut</th><th></th>
                 </tr>
               </thead>
               <tbody id="historyTableBody"></tbody>
@@ -501,15 +651,16 @@
       </div>
 
       <div id="ticketDetailView" style="display:none;">
-        <div class="back-link" id="detailBackLink" onclick="goBackFromDetail()">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          <span id="detailBackLabel">Retour</span>
-        </div>
-
         <div class="card">
           <div class="detail-title-row">
             <h3 style="margin-bottom:0;">Dossier d'investigation</h3>
-            <span class="detail-id mono" id="detailTicketId"></span>
+            <span>
+              <span class="detail-id mono" id="detailTicketId"></span>
+              <button class="copy-btn" onclick="copyTicketId()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copier
+              </button>
+            </span>
           </div>
 
           <div class="badge-row" style="margin-top:10px;">
@@ -529,6 +680,25 @@
           </div>
           <div class="evidence-summary" id="detailEvidenceSummary" style="display:none;"></div>
           <div id="detailEvidenceBox"></div>
+
+          <div class="status-row">
+            <span class="status-label-text">Statut</span>
+            <span class="status-badge" id="statusBadge"></span>
+            <div class="status-actions" id="statusActions">
+              <button class="status-btn validate" onclick="setValidationStatus('detail','human_validated')">Valider</button>
+              <button class="status-btn correct" onclick="toggleCorrectionBox('detail')">Corriger</button>
+              <button class="status-btn reject" onclick="setValidationStatus('detail','rejected')">Rejeter</button>
+            </div>
+          </div>
+          <div class="superseded-banner" id="supersededBanner">
+            Cette investigation a été corrigée et remplacée.
+            <a onclick="void(0)" id="supersededLink">Voir la nouvelle investigation →</a>
+          </div>
+          <div class="correction-box" id="correctionBox">
+            <label class="correction-label">Modifier la réclamation et relancer l'investigation</label>
+            <textarea id="correctionText"></textarea>
+            <button onclick="submitCorrection('detail')">Relancer l'investigation avec la correction</button>
+          </div>
         </div>
 
         <div class="card">
@@ -559,6 +729,43 @@ const CONFIDENCE_LABELS = {
   MEDIUM: "Confiance moyenne",
   LOW: "Confiance faible"
 };
+
+// Purely decorative -- one icon per known category, applied wherever a
+// category string already renders. No new data, just a visual anchor so
+// an agent scanning a list of tickets doesn't have to read every label.
+const CATEGORY_ICONS = {
+  VOICE_EXPIRATION: '<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/>',
+  DATA_USAGE: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  SMS_VAS: '<path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>',
+  SOS_CREDIT: '<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  BALANCE_DEDUCTION: '<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
+};
+function categoryIconHtml(category) {
+  const path = CATEGORY_ICONS[category];
+  if (!path) return '';
+  return `<svg class="cat-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">${path}</svg>`;
+}
+
+// One-line explanation of what HIGH/MEDIUM/LOW actually mean here, shown
+// on hover -- "classification" is about the category guess, "evidence" is
+// about how well the retrieved data actually supports the diagnosis. Same
+// levels, different question, so they get different copy.
+const CONFIDENCE_TOOLTIPS = {
+  classification: {
+    HIGH: "Confiance élevée : la catégorie détectée est très probablement correcte.",
+    MEDIUM: "Confiance moyenne : la catégorie est probable mais pas certaine à 100%.",
+    LOW: "Confiance faible : la catégorie est incertaine, à vérifier manuellement.",
+  },
+  evidence: {
+    HIGH: "Confiance élevée : cause confirmée avec un haut degré de certitude.",
+    MEDIUM: "Confiance moyenne : correspondance plausible, à confirmer si nécessaire.",
+    LOW: "Confiance faible : piste possible, pas une cause confirmée — pourrait être une coïncidence.",
+  },
+};
+function confidenceTooltip(kind, level) {
+  if (!level) return '';
+  return (CONFIDENCE_TOOLTIPS[kind] && CONFIDENCE_TOOLTIPS[kind][level.toUpperCase()]) || '';
+}
 
 let authToken = null;
 let authUsername = null;
@@ -614,7 +821,9 @@ async function login() {
     document.getElementById('loggedInUser').textContent = authUsername;
     document.getElementById('loggedInRole').textContent = authRole;
     statusEl.textContent = '';
-    showView('new');
+    navStack = [];
+    currentView = { type: 'new' };
+    renderCurrentView();
   } catch (err) {
     statusEl.innerHTML = '<span id="loginError">Erreur de connexion au serveur: ' + err.message + '</span>';
   } finally {
@@ -632,21 +841,65 @@ function logout() {
   document.getElementById('loginPassword').value = '';
   document.getElementById('resultBox').style.display = 'none';
   document.getElementById('complaintText').value = '';
+  navStack = [];
+  currentView = { type: 'new' };
 }
 
-function showView(view) {
-  const isNew = view === 'new';
-  document.getElementById('newInvestigationView').style.display = isNew ? 'block' : 'none';
-  document.getElementById('historyView').style.display = isNew ? 'none' : 'block';
-  document.getElementById('ticketDetailView').style.display = 'none';
-  document.getElementById('navNew').classList.toggle('active', isNew);
-  document.getElementById('navHistory').classList.toggle('active', !isNew);
-  if (isNew) {
+// Global navigation stack -- one back button in the topbar works from any
+// page, driven by what was actually visited rather than a hardcoded
+// "detail always goes back to X" rule. goTo() pushes wherever we currently
+// are before switching, so a chain like new -> history -> detail A ->
+// detail B unwinds correctly one step at a time, including the case the
+// old single "lastDetailOrigin" pointer got wrong: from detail A into a
+// related detail B, back now returns to A, not straight to History.
+const VIEW_TITLES = {
+  new: ['Investigation', "Assistant IA — Réclamations Tunisie Telecom"],
+  history: ['Historique', 'Toutes les investigations passées'],
+  detail: ["Dossier d'investigation", 'Résultat complet et historique du numéro'],
+};
+
+let navStack = [];
+let currentView = { type: 'new' };
+
+function renderCurrentView() {
+  document.getElementById('newInvestigationView').style.display = currentView.type === 'new' ? 'block' : 'none';
+  document.getElementById('historyView').style.display = currentView.type === 'history' ? 'block' : 'none';
+  document.getElementById('ticketDetailView').style.display = currentView.type === 'detail' ? 'block' : 'none';
+  document.getElementById('navNew').classList.toggle('active', currentView.type === 'new');
+  document.getElementById('navHistory').classList.toggle('active', currentView.type === 'history');
+
+  const [title, sub] = VIEW_TITLES[currentView.type];
+  document.getElementById('pageTitle').textContent = title;
+  document.getElementById('pageSub').textContent = sub;
+
+  document.getElementById('globalBackBtn').style.visibility = navStack.length > 0 ? 'visible' : 'hidden';
+
+  if (currentView.type === 'new') {
     loadStats();
     loadRecentCards();
-  } else {
+  } else if (currentView.type === 'history') {
     loadHistory();
+  } else if (currentView.type === 'detail') {
+    populateTicketDetail(currentView.id);
   }
+}
+
+function goTo(view) {
+  navStack.push(currentView);
+  currentView = view;
+  renderCurrentView();
+}
+function goBack() {
+  if (navStack.length === 0) return;
+  currentView = navStack.pop();
+  renderCurrentView();
+}
+function showView(type) { goTo({ type }); }
+
+let historyDateFilterToday = false;
+function goToHistoryFilteredToday() {
+  historyDateFilterToday = true;
+  goTo({ type: 'history' });
 }
 
 function formatSearchTier(tier) {
@@ -678,13 +931,13 @@ function ticketCardHtml(h) {
   const confLabel = h.match_confidence ? (CONFIDENCE_LABELS[h.match_confidence] || h.match_confidence) : '—';
   const dateStr = h.created_at ? h.created_at.slice(0, 16).replace('T', ' ') : '';
   return `
-    <div class="ticket-card" onclick="showTicketDetail(${h.log_id}, 'new')">
+    <div class="ticket-card" onclick="showTicketDetail(${h.log_id})">
       <div class="ticket-left">
-        <div class="cat">${h.category || ''}</div>
+        <div class="cat">${categoryIconHtml(h.category)}${h.category || ''}</div>
         <div class="meta">${h.msisdn || ''} · ${dateStr}</div>
       </div>
       <div class="ticket-right">
-        <span class="confidence-badge confidence-${confClass}">${confLabel}</span>
+        <span class="confidence-badge confidence-${confClass}" data-tooltip="${confidenceTooltip('evidence', h.match_confidence)}">${confLabel}</span>
         <svg class="ticket-chevron" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
       </div>
     </div>`;
@@ -718,7 +971,6 @@ async function loadRecentCards() {
 async function loadHistory() {
   const statusEl = document.getElementById('historyStatus');
   const wrapper = document.getElementById('historyTableWrapper');
-  const tbody = document.getElementById('historyTableBody');
 
   if (!authToken) {
     statusEl.textContent = 'Session expiree. Veuillez vous reconnecter.';
@@ -730,6 +982,7 @@ async function loadHistory() {
 
   statusEl.textContent = 'Chargement...';
   wrapper.style.display = 'none';
+  document.getElementById('historyEmptyState').style.display = 'none';
 
   const params = new URLSearchParams();
   if (category) params.set('category', category);
@@ -747,50 +1000,111 @@ async function loadHistory() {
     }
 
     const data = await response.json();
-    const history = data.history || [];
+    let history = data.history || [];
+
+    // /investigations/history has no date filter server-side -- created_at
+    // is already on every row, so "today" is applied client-side against
+    // what was just fetched rather than adding a new query param.
+    if (historyDateFilterToday) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      history = history.filter(h => h.created_at && h.created_at.slice(0, 10) === todayStr);
+      historyDateFilterToday = false;
+    }
 
     if (history.length === 0) {
-      statusEl.textContent = 'Aucune investigation trouvee pour ces filtres.';
+      statusEl.textContent = '';
       wrapper.style.display = 'none';
+      document.getElementById('historyEmptyState').style.display = 'block';
       return;
     }
 
     statusEl.textContent = '';
-    let html = '';
-    history.forEach(h => {
-      const dateStr = h.created_at ? h.created_at.slice(0, 16).replace('T', ' ') : '';
-      const confClass = h.match_confidence ? ('confidence-badge confidence-' + h.match_confidence.toLowerCase()) : '';
-      const confLabel = h.match_confidence ? (CONFIDENCE_LABELS[h.match_confidence] || h.match_confidence) : '—';
-      const coverage = h.evidence_coverage
-        ? `${h.evidence_coverage.distinct_buckets} src, ${h.evidence_coverage.distinct_dates} j`
-        : '—';
-      // Rows only get a "case file" when real evidence was persisted --
-      // a not_found row has nothing to open, so it stays a plain row
-      // rather than faking a detail page for an empty result.
-      const rowAttrs = h.has_detail ? ` class="has-detail" onclick="showTicketDetail(${h.log_id}, 'history')"` : '';
-      const chevron = h.has_detail
-        ? '<svg class="row-chevron" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>'
-        : '';
-      html += '<tr' + rowAttrs + '>';
-      html += '<td class="mono">' + dateStr + '</td>';
-      html += '<td>' + (h.username || '') + '</td>';
-      html += '<td>' + (h.category || '') + '</td>';
-      html += '<td class="mono">' + (h.msisdn || '') + '</td>';
-      html += '<td class="mono">' + formatSearchTier(h.search_tier) + '</td>';
-      html += '<td>' + (h.match_confidence ? '<span class="' + confClass + '">' + confLabel + '</span>' : '—') + '</td>';
-      html += '<td class="coverage-cell">' + coverage + '</td>';
-      html += '<td class="mono">' + (h.rows_returned ?? '—') + '</td>';
-      html += '<td>' + chevron + '</td>';
-      html += '</tr>';
-    });
-    tbody.innerHTML = html;
+    currentHistoryRows = history;
+    historySortKey = null;
+    historySortDir = 1;
+    renderHistoryTableRows(currentHistoryRows);
+    updateSortArrows();
     wrapper.style.display = 'block';
   } catch (err) {
     statusEl.textContent = 'Erreur lors du chargement de l\'historique: ' + err.message;
   }
 }
 
-let lastDetailOrigin = 'new';
+let currentHistoryRows = [];
+let historySortKey = null;
+let historySortDir = 1;
+
+// Sorts what's already loaded (History fetches limit=50, all at once --
+// no server-side pagination to fight with), so this never needs another
+// request. Clicking the same header again reverses direction.
+const HISTORY_SORT_COMPARATORS = {
+  date: (a, b) => (a.created_at || '').localeCompare(b.created_at || ''),
+  category: (a, b) => (a.category || '').localeCompare(b.category || ''),
+  msisdn: (a, b) => (a.msisdn || '').localeCompare(b.msisdn || ''),
+  confidence: (a, b) => (CONFIDENCE_RANK[a.match_confidence] || 0) - (CONFIDENCE_RANK[b.match_confidence] || 0),
+};
+const CONFIDENCE_RANK = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+
+function sortHistory(key) {
+  if (historySortKey === key) {
+    historySortDir *= -1;
+  } else {
+    historySortKey = key;
+    historySortDir = 1;
+  }
+  const rows = [...currentHistoryRows].sort((a, b) => HISTORY_SORT_COMPARATORS[key](a, b) * historySortDir);
+  renderHistoryTableRows(rows);
+  updateSortArrows();
+}
+
+function updateSortArrows() {
+  const arrowIds = { date: 'sortArrowDate', category: 'sortArrowCategory', msisdn: 'sortArrowMsisdn', confidence: 'sortArrowConfidence' };
+  Object.entries(arrowIds).forEach(([key, elId]) => {
+    const el = document.getElementById(elId);
+    el.textContent = historySortKey === key ? (historySortDir === 1 ? '↑' : '↓') : '↕';
+    el.classList.toggle('active', historySortKey === key);
+  });
+}
+
+function renderHistoryTableRows(rows) {
+  const tbody = document.getElementById('historyTableBody');
+  let html = '';
+  rows.forEach(h => {
+    const dateStr = h.created_at ? h.created_at.slice(0, 16).replace('T', ' ') : '';
+    const confClass = h.match_confidence ? ('confidence-badge confidence-' + h.match_confidence.toLowerCase()) : '';
+    const confLabel = h.match_confidence ? (CONFIDENCE_LABELS[h.match_confidence] || h.match_confidence) : '—';
+    const coverage = h.evidence_coverage
+      ? `${h.evidence_coverage.distinct_buckets} src, ${h.evidence_coverage.distinct_dates} j`
+      : '—';
+    // Rows only get a "case file" when real evidence was persisted --
+    // a not_found row has nothing to open, so it stays a plain row
+    // rather than faking a detail page for an empty result.
+    const rowAttrs = h.has_detail ? ` class="has-detail" onclick="showTicketDetail(${h.log_id})"` : '';
+    const chevron = h.has_detail
+      ? '<svg class="row-chevron" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>'
+      : '';
+    html += '<tr' + rowAttrs + '>';
+    html += '<td class="mono">' + dateStr + '</td>';
+    html += '<td>' + (h.username || '') + '</td>';
+    html += '<td>' + categoryIconHtml(h.category) + (h.category || '') + '</td>';
+    html += '<td class="mono">' + (h.msisdn || '') + '</td>';
+    html += '<td class="mono">' + formatSearchTier(h.search_tier) + '</td>';
+    html += '<td>' + (h.match_confidence ? '<span class="' + confClass + '" data-tooltip="' + confidenceTooltip('evidence', h.match_confidence) + '">' + confLabel + '</span>' : '—') + '</td>';
+    html += '<td class="coverage-cell">' + coverage + '</td>';
+    html += '<td class="mono">' + (h.rows_returned ?? '—') + '</td>';
+    if (h.verification_status) {
+      const clickToNew = h.superseded_by_log_id
+        ? ` onclick="event.stopPropagation(); showTicketDetail(${h.superseded_by_log_id})" style="cursor:pointer;" title="Voir la nouvelle investigation"`
+        : '';
+      html += '<td><span class="status-badge status-' + h.verification_status + '"' + clickToNew + '>' + (STATUS_LABEL[h.verification_status] || h.verification_status) + '</span></td>';
+    } else {
+      html += '<td>—</td>';
+    }
+    html += '<td>' + chevron + '</td>';
+    html += '</tr>';
+  });
+  tbody.innerHTML = html;
+}
 
 function renderEvidenceInto(evidence, summaryEl, boxEl) {
   if (Array.isArray(evidence) && evidence.length > 0) {
@@ -820,21 +1134,177 @@ function renderEvidenceInto(evidence, summaryEl, boxEl) {
   }
 }
 
-async function showTicketDetail(logId, fromView) {
+function showTicketDetail(logId) {
   if (!authToken) return;
-  lastDetailOrigin = fromView || lastDetailOrigin;
+  goTo({ type: 'detail', id: logId });
+}
 
-  document.getElementById('newInvestigationView').style.display = 'none';
-  document.getElementById('historyView').style.display = 'none';
-  document.getElementById('ticketDetailView').style.display = 'block';
-  document.getElementById('detailBackLabel').textContent =
-    lastDetailOrigin === 'history' ? "Retour à l'historique" : "Retour aux investigations récentes";
-  document.getElementById('navNew').classList.remove('active');
-  document.getElementById('navHistory').classList.remove('active');
+// ---- Validation status: shown both in the ticket detail view and right
+// on the Résultat card after a fresh investigation, so an agent doesn't
+// have to leave the page to act on what they just saw. Two independent
+// scopes ('detail' and 'result') share the same functions via this id
+// lookup rather than duplicating the logic.
+const STATUS_IDS = {
+  detail: { badge: 'statusBadge', actions: 'statusActions', box: 'correctionBox', text: 'correctionText', banner: 'supersededBanner', bannerLink: 'supersededLink' },
+  result: { badge: 'resultStatusBadge', actions: 'resultStatusActions', box: 'resultCorrectionBox', text: 'resultCorrectionText', banner: 'resultSupersededBanner', bannerLink: 'resultSupersededLink' },
+};
+const statusScopes = {
+  detail: { logId: null, complaintText: null },
+  result: { logId: null, complaintText: null },
+};
+const STATUS_LABEL = {
+  ai_generated: 'Généré par IA', human_reviewed: 'Revu', human_validated: 'Validé',
+  corrected: 'Corrigé', rejected: 'Rejeté',
+};
 
+function updateStatusBadge(scope, status) {
+  const badge = document.getElementById(STATUS_IDS[scope].badge);
+  badge.textContent = status ? (STATUS_LABEL[status] || status) : 'Non vérifié';
+  badge.className = 'status-badge status-' + (status || 'none');
+}
+
+// A superseded ticket's own explanation/evidence never changes (see
+// mark_superseded's docstring) -- validating/rejecting/correcting the old
+// text again would be acting on a known-stale answer, so the actions are
+// replaced with a link to the real, current investigation instead.
+function showSupersededBanner(scope, newLogId) {
+  const ids = STATUS_IDS[scope];
+  document.getElementById(ids.actions).style.display = 'none';
+  document.getElementById(ids.box).classList.remove('open');
+  document.getElementById(ids.banner).style.display = 'block';
+  document.getElementById(ids.bannerLink).onclick = () => showTicketDetail(newLogId);
+}
+function hideSupersededBanner(scope) {
+  const ids = STATUS_IDS[scope];
+  document.getElementById(ids.actions).style.display = 'flex';
+  document.getElementById(ids.banner).style.display = 'none';
+}
+
+// Once a ticket is validated, re-validating or rejecting it doesn't make
+// sense as a next action -- only Corriger stays, in case the validation
+// turns out to be wrong later after all.
+function updateStatusActionsVisibility(scope, status) {
+  const actions = document.getElementById(STATUS_IDS[scope].actions);
+  const hideValidateReject = status === 'human_validated';
+  actions.querySelector('.status-btn.validate').style.display = hideValidateReject ? 'none' : '';
+  actions.querySelector('.status-btn.reject').style.display = hideValidateReject ? 'none' : '';
+}
+
+async function setValidationStatus(scope, status) {
+  const state = statusScopes[scope];
+  if (!state.logId) return;
+  const logId = state.logId;
+  try {
+    const response = await fetch('/investigations/' + logId + '/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ status: status })
+    });
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      alert('Erreur : ' + (errData.detail || 'action non autorisee.'));
+      return;
+    }
+    // The Résultat card is a one-shot view of a live investigation, not a
+    // page an agent stays on -- navigating to the ticket's own detail view
+    // gives clear confirmation that the validation actually took effect,
+    // instead of a badge quietly changing on a page about to be replaced
+    // by the next complaint. The detail view is already on that ticket,
+    // so it just refreshes itself in place (no extra stack entry).
+    if (scope === 'result') {
+      showTicketDetail(logId);
+    } else {
+      updateStatusBadge(scope, status);
+      updateStatusActionsVisibility(scope, status);
+    }
+  } catch (err) {
+    alert('Erreur lors de la mise a jour du statut: ' + err.message);
+  }
+}
+
+function toggleCorrectionBox(scope) {
+  const ids = STATUS_IDS[scope];
+  const box = document.getElementById(ids.box);
+  const opening = !box.classList.contains('open');
+  box.classList.toggle('open');
+  if (opening) {
+    document.getElementById(ids.text).value = statusScopes[scope].complaintText || '';
+  }
+}
+
+// Corriger never rewrites this ticket's own persisted result -- it edits
+// the complaint text, fires a real new /investigate run (full Gateway
+// scan, classification, search), then links the two via
+// POST /investigations/{log_id}/correct. Lands on the new ticket's own
+// detail view, which is the actual corrected answer.
+async function submitCorrection(scope) {
+  const state = statusScopes[scope];
+  if (!state.logId) return;
+  const ids = STATUS_IDS[scope];
+  const editedText = document.getElementById(ids.text).value.trim();
+  if (!editedText) {
+    alert('Le texte de la réclamation ne peut pas être vide.');
+    return;
+  }
+
+  const button = document.querySelector('#' + ids.box + ' button');
+  button.disabled = true;
+  try {
+    const investigateResponse = await fetch('/investigate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ text: editedText })
+    });
+    const investigateData = await investigateResponse.json();
+    if (!investigateResponse.ok) {
+      alert('Erreur : ' + (investigateData.detail || 'action non autorisee.'));
+      return;
+    }
+    if (!investigateData.log_id || !investigateData.evidence || investigateData.evidence.length === 0) {
+      alert("La réclamation corrigée n'a trouvé aucune preuve exploitable -- correction non enregistrée. Modifiez le texte et réessayez.");
+      return;
+    }
+
+    const correctResponse = await fetch('/investigations/' + state.logId + '/correct', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ new_log_id: investigateData.log_id })
+    });
+    if (!correctResponse.ok) {
+      const errData = await correctResponse.json().catch(() => ({}));
+      alert('Erreur lors de la liaison de la correction : ' + (errData.detail || ''));
+      return;
+    }
+
+    showTicketDetail(investigateData.log_id);
+  } catch (err) {
+    alert('Erreur lors de la correction: ' + err.message);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// No toast system exists yet -- matches the rest of the app, which still
+// confirms/errors via alert() everywhere else.
+function copyTicketId() {
+  const id = document.getElementById('detailTicketId').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(id).then(
+      () => alert(id + ' copie dans le presse-papiers.'),
+      () => alert('Impossible de copier automatiquement. Identifiant : ' + id)
+    );
+  } else {
+    alert('Impossible de copier automatiquement. Identifiant : ' + id);
+  }
+}
+
+async function populateTicketDetail(logId) {
+  statusScopes.detail.logId = logId;
   document.getElementById('detailTicketId').textContent = 'INV-' + logId;
   document.getElementById('detailExplanation').textContent = 'Chargement...';
   document.getElementById('relatedHistoryList').textContent = 'Chargement...';
+  document.getElementById('correctionBox').classList.remove('open');
+  document.getElementById('correctionText').value = '';
 
   try {
     const response = await fetch('/investigations/' + logId, {
@@ -850,7 +1320,7 @@ async function showTicketDetail(logId, fromView) {
     }
     const t = await response.json();
 
-    document.getElementById('detailCategoryBadge').textContent = t.category || '';
+    document.getElementById('detailCategoryBadge').innerHTML = categoryIconHtml(t.category) + (t.category || '');
     document.getElementById('detailMsisdn').textContent = t.msisdn || '';
     document.getElementById('detailExplanation').textContent = t.explanation || 'Aucune explication disponible.';
 
@@ -858,6 +1328,7 @@ async function showTicketDetail(logId, fromView) {
     if (t.match_confidence) {
       matchConfEl.textContent = CONFIDENCE_LABELS[t.match_confidence] || t.match_confidence;
       matchConfEl.className = 'confidence-badge confidence-' + t.match_confidence.toLowerCase();
+      matchConfEl.dataset.tooltip = confidenceTooltip('evidence', t.match_confidence);
       matchConfEl.style.display = 'inline-block';
     } else {
       matchConfEl.style.display = 'none';
@@ -872,6 +1343,17 @@ async function showTicketDetail(logId, fromView) {
     }
 
     renderEvidenceInto(t.evidence, document.getElementById('detailEvidenceSummary'), document.getElementById('detailEvidenceBox'));
+
+    statusScopes.detail.complaintText = t.complaint_text || null;
+    if (t.superseded_by_log_id) {
+      updateStatusBadge('detail', 'corrected');
+      showSupersededBanner('detail', t.superseded_by_log_id);
+    } else {
+      hideSupersededBanner('detail');
+      const currentStatus = t.verification ? t.verification.status : null;
+      updateStatusBadge('detail', currentStatus);
+      updateStatusActionsVisibility('detail', currentStatus);
+    }
 
     await loadRelatedHistory(t.msisdn, logId);
   } catch (err) {
@@ -902,14 +1384,18 @@ async function loadRelatedHistory(msisdn, currentLogId) {
 
     list.className = '';
     list.innerHTML = related.map(h => {
-      const dateStr = h.created_at ? h.created_at.slice(0, 10) : '';
+      const dateStr = h.created_at ? h.created_at.slice(0, 16).replace('T', ' ') : '';
       const confClass = h.match_confidence ? h.match_confidence.toLowerCase() : 'low';
       const confLabel = h.match_confidence ? (CONFIDENCE_LABELS[h.match_confidence] || h.match_confidence) : '—';
-      const clickable = h.has_detail ? `onclick="showTicketDetail(${h.log_id}, lastDetailOrigin)"` : '';
+      const clickable = h.has_detail ? `onclick="showTicketDetail(${h.log_id})"` : '';
+      const statusHtml = h.verification_status
+        ? `<span class="status-badge status-${h.verification_status}">${STATUS_LABEL[h.verification_status] || h.verification_status}</span>`
+        : '<span class="rh-status-empty">—</span>';
       return `
         <div class="related-history-item" ${clickable} style="${h.has_detail ? '' : 'cursor:default;'}">
-          <span class="rh-cat">${h.category || ''}</span>
-          <span class="confidence-badge confidence-${confClass}">${confLabel}</span>
+          <span class="rh-cat">${categoryIconHtml(h.category)}${h.category || ''}</span>
+          <span class="confidence-badge confidence-${confClass}" data-tooltip="${confidenceTooltip('evidence', h.match_confidence)}">${confLabel}</span>
+          <span class="rh-status">${statusHtml}</span>
           <span class="rh-date mono">${dateStr}</span>
         </div>`;
     }).join('');
@@ -917,10 +1403,6 @@ async function loadRelatedHistory(msisdn, currentLogId) {
     list.className = 'empty-text';
     list.textContent = 'Erreur lors du chargement.';
   }
-}
-
-function goBackFromDetail() {
-  showView(lastDetailOrigin === 'history' ? 'history' : 'new');
 }
 
 const PIPELINE_ICON_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
@@ -983,6 +1465,10 @@ function resetInvestigationForm() {
   document.getElementById('pipelineCard').style.display = 'none';
   document.getElementById('pipelineTrace').innerHTML = '';
   document.getElementById('resetBtn').style.display = 'none';
+  document.getElementById('resultStatusRow').style.display = 'none';
+  document.getElementById('resultCorrectionBox').classList.remove('open');
+  statusScopes.result.logId = null;
+  statusScopes.result.complaintText = null;
   document.getElementById('complaintText').focus();
 }
 
@@ -1039,18 +1525,20 @@ async function submitComplaint() {
     document.getElementById('pipelineCard').style.display = 'block';
     await animatePipelineTrace(data.pipeline || []);
 
-    document.getElementById('categoryBadge').textContent = data.classification?.category || 'INCONNU';
+    document.getElementById('categoryBadge').innerHTML = categoryIconHtml(data.classification?.category) + (data.classification?.category || 'INCONNU');
     document.getElementById('msisdnValue').textContent = data.classification?.msisdn || 'Non detecte';
 
     const confidenceBadge = document.getElementById('confidenceBadge');
     const confidence = data.classification?.confidence || 'LOW';
     confidenceBadge.textContent = CONFIDENCE_LABELS[confidence] || confidence;
     confidenceBadge.className = 'confidence-badge confidence-' + confidence.toLowerCase();
+    confidenceBadge.dataset.tooltip = confidenceTooltip('classification', confidence);
 
     const matchConfidenceBadge = document.getElementById('matchConfidenceBadge');
     if (data.match_confidence) {
       matchConfidenceBadge.textContent = CONFIDENCE_LABELS[data.match_confidence] || data.match_confidence;
       matchConfidenceBadge.className = 'confidence-badge confidence-' + data.match_confidence.toLowerCase();
+      matchConfidenceBadge.dataset.tooltip = confidenceTooltip('evidence', data.match_confidence);
       matchConfidenceBadge.style.display = 'inline-block';
     } else {
       matchConfidenceBadge.style.display = 'none';
@@ -1082,6 +1570,22 @@ async function submitComplaint() {
     resultBox.style.display = 'block';
     document.getElementById('resetBtn').style.display = 'inline-block';
 
+    // Status controls only make sense once there's a persisted result to
+    // act on (see /investigate's "if evidence:" guard) -- a not_found
+    // result has no case file, so nothing to validate/correct/reject yet.
+    const resultStatusRow = document.getElementById('resultStatusRow');
+    if (data.log_id && data.evidence && data.evidence.length > 0) {
+      statusScopes.result.logId = data.log_id;
+      statusScopes.result.complaintText = text;
+      document.getElementById('resultCorrectionBox').classList.remove('open');
+      hideSupersededBanner('result');
+      updateStatusBadge('result', null);
+      resultStatusRow.style.display = 'flex';
+    } else {
+      statusScopes.result.logId = null;
+      resultStatusRow.style.display = 'none';
+    }
+
     // Keep the history, stats, and recent-cards views current in the
     // background, so switching to them after investigating several cases
     // in a row doesn't show stale data -- these silently refresh whether
@@ -1102,6 +1606,35 @@ document.addEventListener('click', (e) => {
   const panel = document.getElementById('notifPanel');
   if (panel.classList.contains('open') && !e.target.closest('.bell-wrap')) panel.classList.remove('open');
 });
+
+// Single shared, position:fixed tooltip for every [data-tooltip] element
+// (confidence badges everywhere) -- delegated on body so it works for
+// content rendered later via innerHTML (History table, related-history
+// list, ...) without re-binding per row.
+function initTooltips() {
+  const tip = document.createElement('div');
+  tip.className = 'js-tooltip';
+  document.body.appendChild(tip);
+
+  document.body.addEventListener('mouseover', (e) => {
+    const el = e.target.closest('[data-tooltip]');
+    if (!el || !el.dataset.tooltip) return;
+    tip.textContent = el.dataset.tooltip;
+    tip.style.display = 'block';
+    const rect = el.getBoundingClientRect();
+    let top = rect.top - tip.offsetHeight - 8;
+    if (top < 4) top = rect.bottom + 8; // flip below if not enough room above the viewport
+    let left = rect.left;
+    const maxLeft = window.innerWidth - tip.offsetWidth - 8;
+    if (left > maxLeft) left = Math.max(4, maxLeft);
+    tip.style.top = top + 'px';
+    tip.style.left = left + 'px';
+  });
+  document.body.addEventListener('mouseout', (e) => {
+    if (e.target.closest('[data-tooltip]')) tip.style.display = 'none';
+  });
+}
+initTooltips();
 </script>
 </body>
 </html>

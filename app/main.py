@@ -5,9 +5,9 @@ from typing import Optional
 from app.ai.ollama_client import ask_ollama
 from app.ai.classifier import classify_complaint
 from app.ai.explainer import explain_investigation
-from app.ai.case_memory import save_verified_case, update_case_status, VALID_STATUSES
+from app.ai.case_memory import save_verified_case, update_case_status, get_verified_case_by_log_id, VALID_STATUSES
 from app.services.router import run_investigation
-from app.services.investigation_results import save_investigation_result, get_investigation_result
+from app.services.investigation_results import save_investigation_result, get_investigation_result, mark_superseded
 from app.security.dependencies import get_current_user, require_role
 from app.security.audit import get_recent_events, get_investigation_history, get_investigation_stats, get_investigation_summary
 from app.security.audit import log_event
@@ -250,7 +250,7 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
     # history row already shows, and persisting one would let the detail
     # view fake a page for an empty result.
     if evidence:
-        save_investigation_result(log_id, explanation, note, evidence)
+        save_investigation_result(log_id, explanation, note, evidence, complaint_text=text)
 
     return {
         "log_id": log_id,
@@ -398,4 +398,116 @@ def investigation_detail(log_id: int, user: dict = Depends(require_role("SUPPORT
     if summary is None:
         raise HTTPException(status_code=404, detail=f"No investigation result found for id {log_id}")
 
-    return {**summary, **result}
+    # None when this ticket has never been validated/corrected/rejected --
+    # the detail view shows that as "not yet reviewed" rather than assuming
+    # every investigation has a linked verified case (most don't, see
+    # POST /investigations/{log_id}/verify).
+    verification = get_verified_case_by_log_id(log_id)
+
+    return {**summary, **result, "verification": verification}
+
+
+class VerifyInvestigationRequest(BaseModel):
+    status: str
+    correction_note: Optional[str] = None
+
+
+@app.post("/investigations/{log_id}/verify")
+def verify_investigation(log_id: int, payload: VerifyInvestigationRequest, http_request: Request,
+                          user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
+    """
+    The ticket-detail counterpart to /verify-case: instead of an agent
+    re-typing the complaint, category, and MSISDN by hand, this looks all
+    of it up from the investigation itself (already scanned by the Gateway
+    and persisted at /investigate time, see save_investigation_result) and
+    either creates a new verified case linked to this LOG_ID or, if one
+    already exists for this ticket, updates it in place -- so re-clicking
+    Valider/Rejeter on the same ticket never creates duplicate precedent.
+
+    Only "human_validated" and "rejected" are accepted here -- a ticket
+    whose complaint text was actually wrong doesn't belong in case_memory
+    at all under its original (bad) text, so that path is a separate
+    action: see POST /investigations/{log_id}/correct, which re-runs the
+    investigation for real instead of trying to "fix" a case in place.
+    """
+    client_ip = http_request.client.host
+    allowed_statuses = {"human_validated", "rejected"}
+    if payload.status not in allowed_statuses:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid status '{payload.status}' for this action. Must be one of: {sorted(allowed_statuses)}"
+        )
+
+    result = get_investigation_result(log_id)
+    summary = get_investigation_summary(log_id)
+    if result is None or summary is None:
+        raise HTTPException(status_code=404, detail=f"No investigation result found for id {log_id}")
+    if not result.get("complaint_text"):
+        raise HTTPException(
+            status_code=409,
+            detail="This investigation predates complaint-text persistence and cannot be linked to a verified case."
+        )
+
+    existing = get_verified_case_by_log_id(log_id)
+    if existing is not None:
+        update_case_status(existing["case_id"], payload.status, correction_note=payload.correction_note)
+        case_id = existing["case_id"]
+    else:
+        save_verified_case(
+            complaint_text=result["complaint_text"],
+            category=summary.get("category"),
+            msisdn=summary.get("msisdn"),
+            da_value=summary.get("da_value"),
+            verified_by=user["username"],
+            status=payload.status,
+            log_id=log_id,
+            correction_note=payload.correction_note,
+        )
+        case_id = get_verified_case_by_log_id(log_id)["case_id"]
+
+    log_event(
+        "TICKET_VALIDATION_UPDATE",
+        username=user["username"],
+        role=user["role"],
+        details=f"log_id={log_id}, case_id={case_id} -> status={payload.status}",
+        ip_address=client_ip
+    )
+
+    return {"case_id": case_id, "status": payload.status, "correction_note": payload.correction_note}
+
+
+class CorrectInvestigationRequest(BaseModel):
+    new_log_id: int
+
+
+@app.post("/investigations/{log_id}/correct")
+def correct_investigation(log_id: int, payload: CorrectInvestigationRequest, http_request: Request,
+                           user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
+    """
+    Marks this ticket as superseded by a real re-investigation -- the
+    frontend edits the complaint text and fires an ordinary /investigate
+    call first (full Gateway scan, classification, search, the whole real
+    pipeline), then calls this endpoint with the resulting new_log_id to
+    link the two. This never rewrites this ticket's own EXPLANATION/
+    EVIDENCE_JSON/audit entry -- both are append-only/tamper-evident by
+    design (see mark_superseded's docstring) -- it only records "the real
+    answer is over here now".
+    """
+    client_ip = http_request.client.host
+
+    if get_investigation_result(log_id) is None:
+        raise HTTPException(status_code=404, detail=f"No investigation result found for id {log_id}")
+    if get_investigation_result(payload.new_log_id) is None:
+        raise HTTPException(status_code=404, detail=f"No investigation result found for new_log_id {payload.new_log_id}")
+
+    mark_superseded(log_id, payload.new_log_id)
+
+    log_event(
+        "TICKET_CORRECTED",
+        username=user["username"],
+        role=user["role"],
+        details=f"log_id={log_id} -> superseded_by_log_id={payload.new_log_id}",
+        ip_address=client_ip
+    )
+
+    return {"log_id": log_id, "superseded_by_log_id": payload.new_log_id}
