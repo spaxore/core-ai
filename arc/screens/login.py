@@ -11,64 +11,93 @@ from textual import work
 from textual.app import ComposeResult
 from textual.containers import Center, Middle, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Input, Label, Static
+from textual.widgets import Button, Footer, Input, Static
 
 from core.api_client import APIClient, ARCAuthError
+from core.theme import ARC_BLUE, ARC_RED, BORDER, PANEL_ALT, TEXT_DIM
 
 REQUIRED_ROLE = "SECURITY_ANALYST"
 
+# Block-letter "ARC" banner, same convention nmap/msfconsole use for their
+# splash -- plain text in a Static, not an image, so it renders identically
+# on any terminal with no asset to package or check for support.
+ASCII_BANNER = """\
+ ███   ████    ████
+█   █  █   █  █
+█████  ████   █
+█   █  █  █   █
+█   █  █   █   ████"""
+
 
 class LoginScreen(Screen):
-    CSS = """
-    LoginScreen {
+    CSS = f"""
+    LoginScreen {{
         align: center middle;
-    }
-    #login-box {
-        width: 56;
-        height: auto;
-        border: heavy $accent;
-        padding: 2 4;
-    }
-    #login-title {
+    }}
+    #login-banner {{
+        color: {ARC_RED};
         text-style: bold;
-        color: $accent;
         content-align: center middle;
         width: 100%;
         margin-bottom: 1;
-    }
-    #login-subtitle {
-        color: $text-muted;
+    }}
+    #login-banner-sub {{
+        color: {TEXT_DIM};
         content-align: center middle;
         width: 100%;
-        margin-bottom: 2;
-    }
-    #login-notice {
+        margin-bottom: 3;
+    }}
+    #login-column {{
+        width: 44;
+        height: auto;
+    }}
+    #login-form {{
+        width: 100%;
+        height: auto;
+    }}
+    #login-notice {{
         color: $warning;
         content-align: center middle;
         width: 100%;
         margin-bottom: 1;
         display: none;
-    }
-    #login-notice.visible {
+    }}
+    #login-notice.visible {{
         display: block;
-    }
-    #login-error {
+    }}
+    #login-error {{
         color: $error;
         content-align: center middle;
         width: 100%;
         margin-top: 1;
         display: none;
-    }
-    #login-error.visible {
+    }}
+    #login-error.visible {{
         display: block;
-    }
-    Input {
+    }}
+    Input {{
         margin-bottom: 1;
-    }
-    #login-button {
+        background: {PANEL_ALT};
+        border: solid {BORDER};
+    }}
+    Input:focus {{
+        border: solid {ARC_BLUE};
+    }}
+    #login-button {{
         width: 100%;
         margin-top: 1;
-    }
+        background: {ARC_RED};
+        color: $text;
+    }}
+    #login-button:hover {{
+        background: {ARC_RED};
+    }}
+    #login-target {{
+        content-align: center middle;
+        width: 100%;
+        color: {TEXT_DIM};
+        margin-top: 1;
+    }}
     """
 
     def __init__(self, api_client: APIClient, on_success, notice: str | None = None):
@@ -80,14 +109,16 @@ class LoginScreen(Screen):
     def compose(self) -> ComposeResult:
         with Center():
             with Middle():
-                with Vertical(id="login-box"):
-                    yield Static("ARC", id="login-title")
-                    yield Static("AI Red Team Console -- security analyst access only", id="login-subtitle")
-                    yield Static(self.notice or "", id="login-notice")
-                    yield Input(placeholder="Username", id="username")
-                    yield Input(placeholder="Password", password=True, id="password")
-                    yield Button("Log in", id="login-button", variant="primary")
-                    yield Static("", id="login-error")
+                with Vertical(id="login-column"):
+                    yield Static(ASCII_BANNER, id="login-banner")
+                    yield Static("A I   R E D   T E A M   C O N S O L E", id="login-banner-sub")
+                    with Vertical(id="login-form"):
+                        yield Static(self.notice or "", id="login-notice")
+                        yield Input(placeholder="Username", id="username")
+                        yield Input(placeholder="Password", password=True, id="password")
+                        yield Button("Log in", id="login-button")
+                        yield Static("", id="login-error")
+                        yield Static(f"target: {self.api_client.base_url}", id="login-target")
         yield Footer()
 
     def on_mount(self) -> None:

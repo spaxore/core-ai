@@ -16,16 +16,18 @@ from textual.app import App
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from core.api_client import APIClient, Session  # noqa: E402
+from core.theme import ARC_RED_DIM, PANEL  # noqa: E402
 from screens.login import LoginScreen  # noqa: E402
 from screens.menu import MenuScreen  # noqa: E402
 
 
 class ARCApp(App):
     TITLE = "ARC -- AI Red Team Console"
-    CSS = """
-    Screen {
-        background: $surface;
-    }
+    CSS = f"""
+    Screen {{
+        background: {PANEL};
+        border: solid {ARC_RED_DIM};
+    }}
     """
     BINDINGS = [("ctrl+l", "logout", "Logout")]
 

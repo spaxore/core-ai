@@ -1,4 +1,4 @@
-﻿"""
+"""
 ARC Attack Authoring Screen
 -----------------------------
 A form for adding new attacks to the shared YAML library.
@@ -8,10 +8,12 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Select, Static, TextArea
+from textual.widgets import Button, Input, Select, Static, TextArea
 
 from core.attack_writer import AttackWriteError, write_attack
+from core.header_bar import ArcHeader
 from core.session_widget import SessionBar
+from core.theme import ARC_BLUE, BORDER, PANEL_ALT, TEXT, TEXT_DIM
 
 SEVERITY_OPTIONS = [("critical", "critical"), ("high", "high"), ("medium", "medium"),
                     ("low", "low"), ("n/a", "n/a")]
@@ -19,43 +21,81 @@ EXPECTED_OPTIONS = [("blocked", "blocked"), ("allowed", "allowed")]
 
 
 class AuthoringScreen(Screen):
-    CSS = """
-    #session-bar {
-        height: 1;
-        background: $panel;
-        color: $text-muted;
+    CSS = f"""
+    #session-bar {{
+        height: 2;
+        background: {PANEL_ALT};
+        color: {TEXT_DIM};
         padding: 0 1;
-    }
-    #form-scroll {
+        border-bottom: solid {BORDER};
+    }}
+    #form-scroll {{
         height: 1fr;
+        width: 100%;
+        max-width: 110;
         padding: 1 2;
-    }
-    .field-label {
+    }}
+    .field-label {{
         margin-top: 1;
-        color: $text-muted;
-    }
-    Input {
+        color: {TEXT_DIM};
+    }}
+    .field-label:first-of-type {{
+        margin-top: 0;
+    }}
+    Input, Select, TextArea {{
+        background: {PANEL_ALT};
+        color: {TEXT};
+        border: solid {BORDER};
         margin-bottom: 0;
-    }
-    TextArea {
-        height: 6;
-        margin-bottom: 0;
-    }
-    Select {
-        margin-bottom: 0;
-    }
-    #form-status {
+    }}
+    Input:focus, TextArea:focus {{
+        border: solid {ARC_BLUE};
+    }}
+    TextArea {{
+        height: 4;
+    }}
+    #form-status {{
         height: 2;
         margin-top: 1;
         color: $warning;
-    }
-    #nav-row {
+    }}
+    #form-footer {{
         height: 3;
+        align: left middle;
+        background: {PANEL_ALT};
+        border-top: solid {BORDER};
+        padding: 0 2;
+    }}
+    #form-cancel {{
+        width: auto;
+        min-width: 0;
+        height: 1;
+        min-height: 0;
+        content-align: left middle;
+        text-align: left;
+        color: {TEXT_DIM};
+        background: transparent;
+        border: none;
+        text-style: none;
         padding: 0 1;
-    }
-    #nav-row Button {
-        margin-right: 1;
-    }
+    }}
+    #form-cancel:hover {{
+        color: {TEXT};
+        background: {TEXT_DIM} 15%;
+    }}
+    #save {{
+        dock: right;
+        width: 20;
+        height: 1;
+        min-width: 0;
+        min-height: 0;
+        background: {ARC_BLUE};
+        color: $text;
+        text-style: bold;
+        border: none;
+        content-align: center middle;
+        padding: 0 3;
+    }}
     """
 
     BINDINGS = [("escape", "go_back", "Back")]
@@ -66,7 +106,7 @@ class AuthoringScreen(Screen):
         self.attacks_dir = attacks_dir
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield ArcHeader(on_back=self.action_go_back)
         yield SessionBar(self.session, id="session-bar")
         with VerticalScroll(id="form-scroll"):
             yield Static("Attack ID (e.g. DI-006) *", classes="field-label")
@@ -95,11 +135,9 @@ class AuthoringScreen(Screen):
 
             yield Static("", id="form-status")
 
-        with Horizontal(id="nav-row"):
-            yield Button("Save attack", id="save", variant="primary")
-            yield Button("Back to menu", id="go-back")
-            yield Button("Log out", id="logout", variant="error")
-        yield Footer()
+        with Horizontal(id="form-footer"):
+            yield Button("Cancel", id="form-cancel")
+            yield Button("Save attack", id="save")
 
     def action_go_back(self) -> None:
         self.app.pop_screen()
@@ -107,10 +145,8 @@ class AuthoringScreen(Screen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "save":
             self._save()
-        elif event.button.id == "go-back":
-            self.app.pop_screen()
-        elif event.button.id == "logout":
-            self.app.action_logout()
+        elif event.button.id == "form-cancel":
+            self.action_go_back()
 
     def _save(self) -> None:
         status = self.query_one("#form-status", Static)

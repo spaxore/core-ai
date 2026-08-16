@@ -17,6 +17,8 @@ import time
 
 from textual.widgets import Static
 
+from core.theme import TEXT
+
 
 class SessionBar(Static):
     def __init__(self, session, **kwargs):
@@ -34,25 +36,28 @@ class SessionBar(Static):
 
     def _refresh(self) -> None:
         remaining = "unknown"
-        style = ""
+        # Default is the bright TEXT tone (distinguished from the rest of
+        # this bar's dim gray) -- only the countdown phrase itself escalates
+        # to yellow/red near expiry, matching the mockup's dedicated
+        # `.countdown` span rather than dimming the whole bar equally.
+        countdown_style = TEXT
 
         if self.session.expires_at is not None:
             secs_left = int(self.session.expires_at - time.time())
             if secs_left <= 0:
                 remaining = "expired"
-                style = "bold red"
+                countdown_style = "bold red"
             else:
                 mins, secs = divmod(secs_left, 60)
                 remaining = f"{mins:02d}:{secs:02d}"
                 if secs_left <= 60:
-                    style = "bold red"
+                    countdown_style = "bold red"
                 elif secs_left <= 300:
-                    style = "bold yellow"
+                    countdown_style = "bold yellow"
 
         text = (
             f" ARC connected as {self.session.username} ({self.session.role})  |  "
-            f"session expires in: {remaining}  |  target: {self.session.base_url}"
+            f"[{countdown_style}]session expires in: {remaining}[/{countdown_style}]  |  "
+            f"target: {self.session.base_url}"
         )
-        if style:
-            text = f"[{style}]{text}[/{style}]"
         self.update(text)

@@ -28,6 +28,7 @@ from textual.widgets.selection_list import Selection
 
 from core.api_client import APIClient, Session
 from core.attacks import Attack, AttackFile, flatten
+from core.findings import update_findings
 from core.ops_log import append_run
 from core.grading import grade
 from core.redteam_bridge import RedTeamBridge
@@ -323,7 +324,8 @@ class LibraryScreen(Screen):
             self.app.call_from_thread(setattr, self.query_one("#generate-report", Button), "disabled", False)
 
             if self.arc_dir:
-                append_run(self.arc_dir, scored_data)
+                run_record = append_run(self.arc_dir, scored_data)
+                update_findings(self.arc_dir, run_record, self.attacks_by_id)
 
             pass_rate = (summary["pass"] / summary["total"] * 100) if summary["total"] else 0
             self.app.call_from_thread(
