@@ -66,6 +66,30 @@ class RedTeamBridge:
             progress_callback=progress_callback,
         )
 
+    def load_playbooks(self, playbooks_dir: str) -> list[dict]:
+        return self.runner.load_playbooks(playbooks_dir)
+
+    def run_playbook(self, base_url: str, token: str, playbook: dict, attacks_dir: str,
+                      progress_callback=None) -> list[dict]:
+        """
+        Same in-process, one-engine reuse as run_full_suite -- fires the
+        playbook's steps via llm-redteam's own fire_playbook(). Deliberately
+        loads its own raw-dict attack library from attacks_dir here rather
+        than accepting ARC's attacks_by_id: fire_playbook() dict-unpacks
+        each attack (**attack), which works on the plain dicts llm-redteam's
+        own load_attack_library() produces but not on ARC's Attack
+        dataclass instances (core/attacks.py) -- same reason run_full_suite
+        never takes ARC's attack objects either, it loads its own copy.
+        """
+        attacks_by_id = {a["id"]: a for a in self.runner.load_attack_library(attacks_dir)}
+        return self.runner.fire_playbook(
+            base_url=base_url,
+            token=token,
+            playbook=playbook,
+            attacks_by_id=attacks_by_id,
+            progress_callback=progress_callback,
+        )
+
     def score(self, results: list[dict]) -> dict:
         scored = self.scorer.score_all(results)
         summary = self.scorer.summarize(scored)

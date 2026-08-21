@@ -278,6 +278,97 @@ def run(base_url: str, username: str = None, password: str = None, attacks_dir: 
     return results
 
 
+def load_playbooks(playbooks_dir: str) -> list[dict]:
+    """Loads every *.yaml file in playbooks_dir into a flat list of playbook
+    dicts -- same one-file, safe_load-and-go convention as load_attack_library."""
+    playbooks = []
+    for filepath in sorted(glob.glob(os.path.join(playbooks_dir, "*.yaml"))):
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        if data:
+            playbooks.append(data)
+    return playbooks
+
+
+def fire_playbook(base_url: str, token: str, playbook: dict, attacks_by_id: dict,
+                   endpoint: str = "/classify", timeout: int = 90,
+                   progress_callback=None) -> list[dict]:
+    """
+    Fires a playbook's steps in order -- each step is one attack already
+    in the shared library, referenced by id, reusing the exact same
+    per-attack firing logic run() uses (seed/probe two-step attacks,
+    target_endpoint override) so a playbook step behaves identically to
+    that same attack fired standalone from the library. Nothing about
+    firing or grading a single attack is duplicated here.
+
+    Unlike run(), which always fires every attack regardless of outcome,
+    a playbook honors playbook.get("stop_on_fail"): once a step's grade
+    is FAIL, every remaining step is recorded as SKIPPED and never
+    actually fired -- mirroring a real attack chain, where a step that
+    depended on an earlier escalation succeeding never gets a chance to
+    run once that escalation was blocked instead.
+
+    progress_callback(i, total, step_attack, result) is called after each
+    step (fired or skipped), same shape as run()'s callback, so a caller
+    like ARC can reuse its existing live-update pattern unchanged.
+    """
+    from scorer import grade
+
+    steps = playbook["steps"]
+    total = len(steps)
+    results = []
+    stopped = False
+
+    for i, step in enumerate(steps, 1):
+        attack_id = step["attack_id"]
+        attack = attacks_by_id.get(attack_id)
+
+        if attack is None:
+            result = {
+                "id": attack_id,
+                "name": f"Unknown attack '{attack_id}'",
+                "status_code": None, "response_body": None, "elapsed_ms": 0.0,
+                "error": f"'{attack_id}' not found in the loaded attack library",
+                "grade": "ERROR",
+                "run_at": datetime.now(timezone.utc).isoformat(),
+            }
+            results.append(result)
+            if progress_callback:
+                progress_callback(i, total, {"id": attack_id}, result)
+            continue
+
+        if stopped:
+            result = {
+                **attack,
+                "status_code": None, "response_body": None, "elapsed_ms": 0.0,
+                "error": None, "grade": "SKIPPED",
+                "skipped_reason": "Chaine arretee : une etape precedente a echoue (escalade reussie)",
+                "run_at": datetime.now(timezone.utc).isoformat(),
+            }
+            results.append(result)
+            if progress_callback:
+                progress_callback(i, total, attack, result)
+            continue
+
+        if "seed" in attack:
+            outcome = fire_seed_probe_attack(base_url, token, attack, endpoint, timeout)
+        else:
+            attack_endpoint = attack.get("target_endpoint", endpoint)
+            outcome = fire_attack(base_url, token, attack["prompt"], attack, attack_endpoint, timeout)
+
+        result = {**attack, **outcome, "run_at": datetime.now(timezone.utc).isoformat()}
+        result["grade"] = grade(result)
+        results.append(result)
+
+        if progress_callback:
+            progress_callback(i, total, attack, result)
+
+        if playbook.get("stop_on_fail") and result["grade"] == "FAIL":
+            stopped = True
+
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(description="LLM Red-Teaming Framework runner")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")

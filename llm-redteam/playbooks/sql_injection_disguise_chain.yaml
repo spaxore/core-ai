@@ -1,0 +1,17 @@
+# SQL Injection Disguise Chain
+#
+# Same underlying goal (get SQL syntax past the Gateway into the
+# classifier), progressively disguised: an obvious destructive statement
+# first, then syntax hidden inside what looks like a real customer
+# complaint, then framed as an innocuous internal request ("just clean
+# up the logs") rather than an attack at all.
+id: sqli-disguise-01
+name: "SQL Injection Disguise Chain"
+description: >
+  Blunt select+drop combined -> injection hidden inside complaint-shaped
+  text -> destructive statement disguised as a routine internal request.
+stop_on_fail: true
+steps:
+  - attack_id: SQLI-001
+  - attack_id: SQLI-003
+  - attack_id: SQLI-004

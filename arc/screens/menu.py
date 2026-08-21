@@ -14,20 +14,23 @@ from textual.widgets import Button, Static
 from core.api_client import APIClient, Session
 from core.header_bar import ArcHeader
 from core.session_widget import SessionBar
-from core.theme import ARC_AMBER, ARC_BLUE, BORDER, PANEL_ALT, TEXT, TEXT_DIM
+from core.theme import ARC_BLUE, BORDER, PANEL_ALT, TEXT, TEXT_DIM
 
 # (num, dest_id, title, badge_fg) -- dest_id doubles as the row's Button id
 # ("go-<dest_id>") and the routing key _go_to() dispatches on. Subtitles
-# aren't listed here -- Attack Library's is built from real data
-# (core.attacks/core.ops_log), the other two are static and set in compose().
+# aren't listed here -- they're built from real data (core.attacks/
+# core.ops_log/core.findings) in compose().
+#
+# Author New Attack, Playbooks, and Known Techniques used to be their own
+# top-level entries here -- they were pulled into Attack Library's own
+# catalog-tools-row instead (screens/library.py), since they're different
+# modes of working with the same catalog, not unrelated destinations. The
+# main menu now only lists the two genuinely separate concerns: the
+# catalog itself, and what it found.
 MENU_DESTINATIONS = [
     ("01", "library", "Attack Library", ARC_BLUE),
-    ("02", "author", "Author New Attack", ARC_AMBER),
-    ("03", "ops-log", "Findings", TEXT_DIM),
+    ("02", "ops-log", "Findings", TEXT_DIM),
 ]
-STATIC_SUBTITLES = {
-    "author": "Add to catalog",
-}
 
 
 def _library_subtitle(attacks_dir: str, arc_dir: str) -> str:
@@ -106,8 +109,7 @@ class MenuScreen(Screen):
 
     BINDINGS = [
         Binding("1", "open_destination('library')", "Attack Library", show=False),
-        Binding("2", "open_destination('author')", "Author New Attack", show=False),
-        Binding("3", "open_destination('ops-log')", "Ops Log", show=False),
+        Binding("2", "open_destination('ops-log')", "Findings", show=False),
     ]
 
     def __init__(self, api_client: APIClient, session: Session, attacks_dir: str, arc_dir: str):
@@ -120,15 +122,13 @@ class MenuScreen(Screen):
     def compose(self) -> ComposeResult:
         yield ArcHeader()
         yield SessionBar(self.session, id="session-bar")
-        yield Static("Main menu -- select a destination (1/2/3, or click)", id="menu-caption")
+        yield Static("Main menu -- select a destination (1/2, or click)", id="menu-caption")
         with Vertical(id="menu-rows"):
             for num, dest_id, title, badge_fg in MENU_DESTINATIONS:
                 if dest_id == "library":
                     subtitle = _library_subtitle(self.attacks_dir, self.arc_dir)
-                elif dest_id == "ops-log":
-                    subtitle = _findings_subtitle(self.arc_dir)
                 else:
-                    subtitle = STATIC_SUBTITLES[dest_id]
+                    subtitle = _findings_subtitle(self.arc_dir)
                 yield Button(
                     f"[{TEXT_DIM}]›[/{TEXT_DIM}] [{badge_fg} on {badge_fg} 15%] {num} [/]  [b]{title}[/b]\n"
                     f"        [dim]{subtitle}[/dim]",
@@ -159,11 +159,6 @@ class MenuScreen(Screen):
 
             attack_files = load_attack_library(self.attacks_dir)
             self.app.push_screen(LibraryScreen(self.api_client, self.session, attack_files, self.attacks_dir, self.arc_dir))
-
-        elif dest_id == "author":
-            from screens.authoring import AuthoringScreen
-
-            self.app.push_screen(AuthoringScreen(self.session, self.attacks_dir))
 
         elif dest_id == "ops-log":
             from screens.ops_log import OpsLogScreen

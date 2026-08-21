@@ -18,8 +18,13 @@ from textual.widgets import Button, Static
 from core.theme import ARC_ROSE, BORDER, PANEL_ALT, TEXT_DIM
 
 TITLE = "ARC -- AI Red Team Console"
-# The power-symbol glyph (U+23FB) didn't render in the user's terminal font
-# -- falling back to plain text, per the earlier consult's agreed fallback.
+# The arrow (U+2190) is common enough to render everywhere and is kept as
+# a glyph. The power symbol (U+23FB) is not -- confirmed via screenshot to
+# render as a tofu/fallback box in this user's terminal font (a rare
+# "Miscellaneous Technical" block character, unlike the much more common
+# arrow), so logout stays plain text rather than risk another silent
+# fallback glyph.
+BACK_GLYPH = "←"  # <-
 LOGOUT_LABEL = "Logout"
 
 
@@ -29,6 +34,7 @@ class ArcHeader(Horizontal):
         height: 2;
         background: {PANEL_ALT};
         border-bottom: solid {BORDER};
+        padding-right: 2;
     }}
     ArcHeader #header-brand {{
         width: 1fr;
@@ -61,7 +67,7 @@ class ArcHeader(Horizontal):
         background: {ARC_ROSE} 15%;
     }}
     ArcHeader Button#header-back {{
-        width: 8;
+        width: 4;
         min-width: 0;
         height: 1;
         min-height: 0;
@@ -87,7 +93,7 @@ class ArcHeader(Horizontal):
         yield Static(TITLE, id="header-brand")
         yield Static("", id="header-clock")
         if self._on_back is not None:
-            yield Button("Back", id="header-back")
+            yield Button(BACK_GLYPH, id="header-back")
         yield Button(LOGOUT_LABEL, id="header-logout")
 
     def on_mount(self) -> None:
