@@ -95,6 +95,9 @@ Answer: {{"category": "SMS_VAS", "confidence": "HIGH"}}
 
 Complaint: "reclame l'expiration du forfait Voix, Balance concerne DA4, Montant expire 18 DT"
 Answer: {{"category": "VOICE_EXPIRATION", "confidence": "HIGH"}}
+
+Complaint: "reclame l'expiration brusque de 10 DT de son solde principale" (no forfait, DA bucket, or named service mentioned)
+Answer: {{"category": "BALANCE_DEDUCTION", "confidence": "MEDIUM"}}
 {precedent_section}
 Now classify the complaint below into exactly ONE of these categories:
 VOICE_EXPIRATION, DATA_USAGE, SMS_VAS, SOS_CREDIT, BALANCE_DEDUCTION

@@ -14,7 +14,7 @@ from textual.widgets import Button, Static
 from core.api_client import APIClient, Session
 from core.header_bar import ArcHeader
 from core.session_widget import SessionBar
-from core.theme import ARC_BLUE, BORDER, PANEL_ALT, TEXT, TEXT_DIM
+from core.theme import ARC_BLUE, ARC_RED, BORDER, PANEL_ALT, TEXT, TEXT_DIM
 
 # (num, dest_id, title, badge_fg) -- dest_id doubles as the row's Button id
 # ("go-<dest_id>") and the routing key _go_to() dispatches on. Subtitles
@@ -30,6 +30,7 @@ from core.theme import ARC_BLUE, BORDER, PANEL_ALT, TEXT, TEXT_DIM
 MENU_DESTINATIONS = [
     ("01", "library", "Attack Library", ARC_BLUE),
     ("02", "ops-log", "Findings", TEXT_DIM),
+    ("03", "canary", "Canary Alerts", ARC_RED),
 ]
 
 
@@ -47,6 +48,14 @@ def _library_subtitle(attacks_dir: str, arc_dir: str) -> str:
         pass_rate = history[-1]["pass_rate"]
         return f"{count} attacks - last run {pass_rate:.0f}% pass"
     return f"{count} attacks - never run"
+
+
+def _canary_subtitle() -> str:
+    # Unlike the other two subtitles, this isn't a local file read -- a
+    # live count would mean a blocking HTTP call inside compose(), which
+    # would stall the whole menu screen. The real count is what the
+    # screen itself polls for once opened (screens/canary_alerts.py).
+    return "Live honeytoken monitor"
 
 
 def _findings_subtitle(arc_dir: str) -> str:
@@ -110,6 +119,7 @@ class MenuScreen(Screen):
     BINDINGS = [
         Binding("1", "open_destination('library')", "Attack Library", show=False),
         Binding("2", "open_destination('ops-log')", "Findings", show=False),
+        Binding("3", "open_destination('canary')", "Canary Alerts", show=False),
     ]
 
     def __init__(self, api_client: APIClient, session: Session, attacks_dir: str, arc_dir: str):
@@ -122,13 +132,15 @@ class MenuScreen(Screen):
     def compose(self) -> ComposeResult:
         yield ArcHeader()
         yield SessionBar(self.session, id="session-bar")
-        yield Static("Main menu -- select a destination (1/2, or click)", id="menu-caption")
+        yield Static("Main menu -- select a destination (1/2/3, or click)", id="menu-caption")
         with Vertical(id="menu-rows"):
             for num, dest_id, title, badge_fg in MENU_DESTINATIONS:
                 if dest_id == "library":
                     subtitle = _library_subtitle(self.attacks_dir, self.arc_dir)
-                else:
+                elif dest_id == "ops-log":
                     subtitle = _findings_subtitle(self.arc_dir)
+                else:
+                    subtitle = _canary_subtitle()
                 yield Button(
                     f"[{TEXT_DIM}]›[/{TEXT_DIM}] [{badge_fg} on {badge_fg} 15%] {num} [/]  [b]{title}[/b]\n"
                     f"        [dim]{subtitle}[/dim]",
@@ -164,3 +176,8 @@ class MenuScreen(Screen):
             from screens.ops_log import OpsLogScreen
 
             self.app.push_screen(OpsLogScreen(self.session, self.arc_dir))
+
+        elif dest_id == "canary":
+            from screens.canary_alerts import CanaryAlertsScreen
+
+            self.app.push_screen(CanaryAlertsScreen(self.api_client, self.session))

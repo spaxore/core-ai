@@ -82,6 +82,57 @@ def get_recent_events(limit: int = 20):
     ]
 
 
+def get_canary_events(limit: int = 20):
+    """
+    Same shape as get_recent_events(), filtered to CANARY_TRIGGERED rows
+    only -- backs GET /admin/canary-events, which is deliberately narrower
+    than /admin/audit-log so an account that only needs to see honeytoken
+    hits (redteam_runner, SUPPORT_AGENT) doesn't need the broader
+    SECURITY_ANALYST-only audit-log role.
+    """
+    conn = oracledb.connect(
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        dsn=os.getenv("DB_DSN")
+    )
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM (
+            SELECT LOG_ID, USERNAME, ROLE, DETAILS, IP_ADDRESS, CREATED_AT
+            FROM TT_AI_AUDIT_LOG
+            WHERE EVENT_TYPE = 'CANARY_TRIGGERED'
+            ORDER BY LOG_ID DESC
+        ) WHERE ROWNUM <= :limit
+    """, limit=limit)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    # Lazy import: lockout.py imports log_event from this module at load
+    # time, so a top-level import here would be circular (same pattern as
+    # get_investigation_history()'s REDTEAM_EXEMPT_USERS import above).
+    from app.security.lockout import REDTEAM_EXEMPT_USERS
+
+    return [
+        {
+            "log_id": r[0],
+            "username": r[1],
+            "role": r[2],
+            "category": _extract_field(r[3], "category"),
+            "msisdn": _extract_field(r[3], "msisdn"),
+            "details": r[3],
+            "ip_address": r[4],
+            "created_at": r[5].isoformat() if r[5] else None,
+            "certified": _extract_field(r[3], "channel") == "mTLS",
+            # apply_immediate_lockout() (honeytoken.py) always locks a
+            # non-exempt account on this exact event -- exemption is the
+            # only reason a trigger wouldn't have locked it.
+            "status": "exempt" if r[1] in REDTEAM_EXEMPT_USERS else "locked",
+        }
+        for r in rows
+    ]
+
+
 def _extract_field(details: str, key: str):
     """
     Pulls one key=value pair out of an INVESTIGATE audit log's DETAILS

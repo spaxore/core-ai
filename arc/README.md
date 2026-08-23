@@ -23,23 +23,38 @@ role, enforced both server-side (existing RBAC) and again in ARC itself.
 pip install -r requirements.txt
 ```
 
+## Certificates (mTLS)
+
+ARC authenticates to the platform over a dedicated port that requires a
+client certificate (`:8443`, `ssl_cert_reqs=CERT_REQUIRED` — see
+`app/security/mtls.py` on the platform side). The browser UI / normal
+agents still use plain `:8000` HTTPS with just a JWT, unaffected.
+
+Generate a CA + server cert + ARC client cert once (from the platform
+repo, `scripts/generate_mtls_certs.sh`), then copy `ca.crt`,
+`arc-client.crt`, and `arc-client.key` into a `certs/` folder next to
+this README — `arc.py` looks for them there by default.
+
 ## Run (development — same machine as the API)
 
 ```bash
-python arc.py --base-url http://127.0.0.1:8000 --attacks-dir ../llm-redteam/attacks
+python arc.py --base-url https://127.0.0.1:8443 --attacks-dir ../llm-redteam/attacks
 ```
+
+(These are also the defaults — the above is equivalent to just `python arc.py`.)
 
 ## Run (network-separated — from the operator VM)
 
 ```bash
-python arc.py --base-url http://<host-lan-ip>:8000 --attacks-dir ./attacks
+python arc.py --base-url https://<host-lan-ip>:8443 --attacks-dir ./attacks
 ```
 
-Requires the API server to bind to `0.0.0.0` instead of `127.0.0.1`
-(`uvicorn app.main:app --host 0.0.0.0 --port 8000`), and the VM to be able
-to reach the host over the LAN. This is a networking-only change — no
-application code is affected, and it's fully reversible by restarting
-uvicorn without `--host 0.0.0.0`.
+Requires the API server's `:8443` process to bind to `0.0.0.0` instead of
+`127.0.0.1`, and the VM to be able to reach the host over the LAN. This is
+a networking-only change — no application code is affected, and it's
+fully reversible by restarting that uvicorn process without `--host
+0.0.0.0`. The client cert itself (not just network reachability) is what
+actually gates access from the VM — same guarantee either way.
 
 ## Navigating ARC
 

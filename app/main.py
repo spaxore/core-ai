@@ -9,10 +9,12 @@ from app.ai.case_memory import save_verified_case, update_case_status, get_verif
 from app.services.router import run_investigation
 from app.services.investigation_results import save_investigation_result, get_investigation_result, mark_superseded
 from app.security.dependencies import get_current_user, require_role
-from app.security.audit import get_recent_events, get_investigation_history, get_investigation_stats, get_investigation_summary
+from app.security.audit import get_recent_events, get_investigation_history, get_investigation_stats, get_investigation_summary, get_canary_events
 from app.security.audit import log_event
 from app.security.gateway import inspect_prompt
 from app.security.lockout import check_and_apply_lockout
+from app.security.honeytoken import check_for_canary
+from app.security.mtls import channel_label
 from datetime import date, timedelta
 from app.routes.auth_routes import router as auth_router
 
@@ -53,17 +55,21 @@ def classify(complaint: dict, http_request: Request, user: dict = Depends(requir
             "SECURITY_ALERT",
             username=user["username"],
             role=user["role"],
-            details=f"BLOCKED classify: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={text}",
+            details=f"BLOCKED classify: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={text}, channel={channel_label(http_request)}",
             ip_address=client_ip
         )
         check_and_apply_lockout(user["username"], user["role"], client_ip)
-        raise HTTPException(status_code=403, detail="Request blocked by security gateway")
+        raise HTTPException(status_code=403, detail={
+            "message": "Request blocked by security gateway",
+            "risk_score": scan["risk_score"],
+            "matched_categories": [m["category"] for m in scan["matches"]],
+        })
     elif scan["risk_score"] > 0:
         log_event(
             "SECURITY_FLAG",
             username=user["username"],
             role=user["role"],
-            details=f"FLAGGED classify: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={text}",
+            details=f"FLAGGED classify: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={text}, channel={channel_label(http_request)}",
             ip_address=client_ip
         )
 
@@ -73,7 +79,7 @@ def classify(complaint: dict, http_request: Request, user: dict = Depends(requir
         "CLASSIFY",
         username=user["username"],
         role=user["role"],
-        details=f"text={text} -> category={result.get('category')}, msisdn={result.get('msisdn')}, da_value={result.get('da_value')}",
+        details=f"text={text} -> category={result.get('category')}, msisdn={result.get('msisdn')}, da_value={result.get('da_value')}, channel={channel_label(http_request)}",
         ip_address=client_ip
     )
 
@@ -113,17 +119,21 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
             "SECURITY_ALERT",
             username=user["username"],
             role=user["role"],
-            details=f"BLOCKED investigate: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={text}",
+            details=f"BLOCKED investigate: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={text}, channel={channel_label(http_request)}",
             ip_address=client_ip
         )
         check_and_apply_lockout(user["username"], user["role"], client_ip)
-        raise HTTPException(status_code=403, detail="Request blocked by security gateway")
+        raise HTTPException(status_code=403, detail={
+            "message": "Request blocked by security gateway",
+            "risk_score": scan["risk_score"],
+            "matched_categories": [m["category"] for m in scan["matches"]],
+        })
     elif scan["risk_score"] > 0:
         log_event(
             "SECURITY_FLAG",
             username=user["username"],
             role=user["role"],
-            details=f"FLAGGED investigate: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={text}",
+            details=f"FLAGGED investigate: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={text}, channel={channel_label(http_request)}",
             ip_address=client_ip
         )
 
@@ -135,13 +145,20 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
     target_volume_gb = classification.get("target_volume_gb")
     event_date_str = classification.get("event_date")
 
+    # Checked as soon as a target exists, before the DB is ever touched --
+    # a canary target is worth catching even if the request goes on to
+    # find no evidence, since the manipulation already happened at
+    # classification time.
+    channel = channel_label(http_request)
+    target_was_canary = check_for_canary(msisdn, None, user["username"], user["role"], client_ip, category=category, channel=channel)
+
     if not msisdn:
         pipeline.append(_pipeline_step("Classification", "error", "Aucun numéro client détecté"))
         log_event(
             "INVESTIGATE",
             username=user["username"],
             role=user["role"],
-            details=f"text={text} -> FAILED: no MSISDN extracted",
+            details=f"text={text} -> FAILED: no MSISDN extracted, channel={channel}",
             ip_address=client_ip
         )
         return {
@@ -191,7 +208,7 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
             "INVESTIGATE",
             username=user["username"],
             role=user["role"],
-            details=f"category={category}, msisdn={msisdn} -> ERROR: {investigation_result['error']}",
+            details=f"category={category}, msisdn={msisdn} -> ERROR: {investigation_result['error']}, channel={channel}",
             ip_address=client_ip
         )
         return {
@@ -207,6 +224,17 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
     pipeline.extend(investigation_result.get("trace", []))
 
     evidence = investigation_result.get("evidence", [])
+
+    # Second check, on the actual rows returned: catches a case where the
+    # extracted MSISDN looked legitimate but a manipulated/broadened query
+    # pulled the canary row in anyway -- a real SQLi-via-prompt success,
+    # not just an attempted one, which the first check (on the target
+    # alone) can't see. Skipped when the target itself was already the
+    # canary -- that's already logged above, checking evidence too would
+    # just be a second, redundant entry for the same known trigger.
+    if not target_was_canary:
+        check_for_canary(msisdn, evidence, user["username"], user["role"], client_ip, category=category, channel=channel)
+
     search_tier = investigation_result.get("search_tier")
     note = investigation_result.get("note")
     match_confidence = investigation_result.get("confidence")
@@ -220,7 +248,7 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
             "INVESTIGATE",
             username=user["username"],
             role=user["role"],
-            details=f"category={category}, msisdn={msisdn} -> ERROR generating explanation: {exc}",
+            details=f"category={category}, msisdn={msisdn} -> ERROR generating explanation: {exc}, channel={channel}",
             ip_address=client_ip
         )
         return {
@@ -241,7 +269,7 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
         "INVESTIGATE",
         username=user["username"],
         role=user["role"],
-        details=f"category={category}, msisdn={msisdn}, da_value={da_value}, target_amount={target_amount}, target_volume_gb={target_volume_gb}, anchor={anchor_date}, search_tier={search_tier}, match_confidence={match_confidence}, evidence_coverage={evidence_coverage}, rows_returned={len(evidence) if evidence else 0}",
+        details=f"category={category}, msisdn={msisdn}, da_value={da_value}, target_amount={target_amount}, target_volume_gb={target_volume_gb}, anchor={anchor_date}, search_tier={search_tier}, match_confidence={match_confidence}, evidence_coverage={evidence_coverage}, rows_returned={len(evidence) if evidence else 0}, channel={channel}",
         ip_address=client_ip
     )
 
@@ -283,17 +311,21 @@ def verify_case(payload: VerifyCaseRequest, http_request: Request, user: dict = 
             "SECURITY_ALERT",
             username=user["username"],
             role=user["role"],
-            details=f"BLOCKED verify-case: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={payload.complaint_text}",
+            details=f"BLOCKED verify-case: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={payload.complaint_text}, channel={channel_label(http_request)}",
             ip_address=client_ip
         )
         check_and_apply_lockout(user["username"], user["role"], client_ip)
-        raise HTTPException(status_code=403, detail="Request blocked by security gateway")
+        raise HTTPException(status_code=403, detail={
+            "message": "Request blocked by security gateway",
+            "risk_score": scan["risk_score"],
+            "matched_categories": [m["category"] for m in scan["matches"]],
+        })
     elif scan["risk_score"] > 0:
         log_event(
             "SECURITY_FLAG",
             username=user["username"],
             role=user["role"],
-            details=f"FLAGGED verify-case: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={payload.complaint_text}",
+            details=f"FLAGGED verify-case: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={payload.complaint_text}, channel={channel_label(http_request)}",
             ip_address=client_ip
         )
 
@@ -309,7 +341,7 @@ def verify_case(payload: VerifyCaseRequest, http_request: Request, user: dict = 
         "VERIFY_CASE",
         username=user["username"],
         role=user["role"],
-        details=f"Verified case saved: category={payload.category}, msisdn={payload.msisdn}, da_value={payload.da_value}",
+        details=f"Verified case saved: category={payload.category}, msisdn={payload.msisdn}, da_value={payload.da_value}, channel={channel_label(http_request)}",
         ip_address=client_ip
     )
 
@@ -348,7 +380,7 @@ def verify_case_status(case_id: int, payload: UpdateCaseStatusRequest, http_requ
         "VERIFY_CASE_STATUS_UPDATE",
         username=user["username"],
         role=user["role"],
-        details=f"case_id={case_id} -> status={payload.status}",
+        details=f"case_id={case_id} -> status={payload.status}, channel={channel_label(http_request)}",
         ip_address=client_ip
     )
 
@@ -358,6 +390,18 @@ def verify_case_status(case_id: int, payload: UpdateCaseStatusRequest, http_requ
 @app.get("/admin/audit-log")
 def audit_log(limit: int = 20, user: dict = Depends(require_role("SECURITY_ANALYST"))):
     return {"events": get_recent_events(limit)}
+
+
+@app.get("/admin/canary-events")
+def canary_events(limit: int = 20, user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
+    """
+    Deliberately narrower than /admin/audit-log (SECURITY_ANALYST-only):
+    this only ever returns CANARY_TRIGGERED rows, so an account that just
+    needs to see honeytoken hits -- ARC's redteam_runner, a SUPPORT_AGENT
+    role -- doesn't need the broader analyst-only audit-log grant to see
+    them.
+    """
+    return {"events": get_canary_events(limit)}
 
 
 @app.get("/investigations/history")

@@ -100,7 +100,7 @@ class OpsLogScreen(Screen):
     .pill {{
         dock: right;
         width: 8;
-        height: 2;
+        height: 1;
         content-align: center middle;
         text-align: center;
         text-style: bold;

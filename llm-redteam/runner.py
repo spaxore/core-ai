@@ -30,6 +30,22 @@ from typing import Optional
 import requests
 import yaml
 
+# mTLS client identity for ARC's certified channel (see app/security/mtls.py
+# and scripts/generate_mtls_certs.sh on the platform side). Read from env
+# vars rather than added as a parameter threaded through run()/fire_playbook/
+# fire_attack/fire_request -- this tool stays a decoupled HTTP client either
+# way (CLI usage: set the vars before invoking; ARC's in-process bridge sets
+# them at startup from its own --client-cert/--client-key/--ca-cert args
+# before this module is ever imported).
+_session = requests.Session()
+_client_cert = os.getenv("ARC_CLIENT_CERT")
+_client_key = os.getenv("ARC_CLIENT_KEY")
+_ca_cert = os.getenv("ARC_CA_CERT")
+if _client_cert and _client_key:
+    _session.cert = (_client_cert, _client_key)
+if _ca_cert:
+    _session.verify = _ca_cert
+
 
 def load_attack_library(attacks_dir: str) -> list[dict]:
     """Load every YAML file in attacks_dir into a flat list of attack dicts,
@@ -63,7 +79,7 @@ def load_attack_library(attacks_dir: str) -> list[dict]:
 
 def login(base_url: str, username: str, password: str) -> str:
     """Authenticate against /login and return the bearer token."""
-    resp = requests.post(
+    resp = _session.post(
         f"{base_url}/login",
         json={"username": username, "password": password},
         timeout=10,
@@ -105,7 +121,7 @@ def fire_request(base_url: str, token: str, endpoint: str, body: dict, timeout: 
 
     started = time.time()
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{base_url}{endpoint}",
             headers=headers,
             json=body,

@@ -89,6 +89,38 @@ def check_and_apply_lockout(username: str, role: str, ip_address: str = None):
     conn.close()
 
 
+def apply_immediate_lockout(username: str, role: str, ip_address: str = None, reason: str = None):
+    """Immediate lockout for a confirmed outcome (a honeytoken hit), not a
+    suspicious pattern to accumulate -- unlike check_and_apply_lockout()
+    above, this doesn't count anything first, it locks on this call.
+    Still checks REDTEAM_EXEMPT_USERS itself, even though callers (e.g.
+    app.security.honeytoken) already check it -- defense in depth, this
+    function should never lock that account no matter how it's invoked.
+    """
+    if username in REDTEAM_EXEMPT_USERS:
+        return
+
+    conn = _get_connection()
+    cursor = conn.cursor()
+
+    lock_until = datetime.now() + timedelta(minutes=LOCK_DURATION_MINUTES)
+    cursor.execute("""
+        UPDATE TT_AI_USERS SET LOCKED_UNTIL = :lock_until WHERE USERNAME = :username
+    """, lock_until=lock_until, username=username)
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    log_event(
+        "SECURITY_LOCKOUT",
+        username=username,
+        role=role,
+        details=f"Account locked until {lock_until.isoformat()} immediately after a confirmed incident: {reason}",
+        ip_address=ip_address
+    )
+
+
 def check_and_apply_login_lockout(username: str, ip_address: str = None):
     """Login (brute-force) lockout -- triggered by repeated LOGIN_FAILURE
     events, independent of Gateway activity. Deliberately a separate

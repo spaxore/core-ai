@@ -50,6 +50,7 @@ class ArcHeader(Horizontal):
         padding-right: 1;
     }}
     ArcHeader Button#header-logout {{
+        dock: right;
         width: 10;
         min-width: 0;
         height: 1;
@@ -61,6 +62,7 @@ class ArcHeader(Horizontal):
         content-align: center middle;
         text-align: center;
         padding: 0 1;
+        margin-right: 1;
     }}
     ArcHeader Button#header-logout:hover {{
         color: {ARC_ROSE};
@@ -99,9 +101,13 @@ class ArcHeader(Horizontal):
     def on_mount(self) -> None:
         self._tick()
         self.set_interval(1.0, self._tick)
+        self.refresh(layout=True)
 
     def _tick(self) -> None:
         self.query_one("#header-clock", Static).update(time.strftime("%H:%M:%S"))
+
+    def on_resize(self) -> None:
+        self.refresh(layout=True)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "header-logout":

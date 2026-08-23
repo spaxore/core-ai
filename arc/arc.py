@@ -2,7 +2,13 @@
 ARC -- AI Red Team Console
 ============================
 Usage:
-    python arc.py --base-url http://127.0.0.1:8000 --attacks-dir ../llm-redteam/attacks
+    python arc.py
+
+Defaults to the mTLS-required port (https://127.0.0.1:8443) and the
+certs/ folder next to this file (see README.md's Certificates section).
+Override with --base-url/--client-cert/--client-key/--ca-cert if needed --
+:8000 is the browser/agent-facing port and does NOT accept ARC's client
+cert, so pointing ARC there will just fail to connect.
 """
 from __future__ import annotations
 
@@ -31,9 +37,11 @@ class ARCApp(App):
     """
     BINDINGS = [("ctrl+l", "logout", "Logout")]
 
-    def __init__(self, base_url: str, attacks_dir: str):
+    def __init__(self, base_url: str, attacks_dir: str,
+                 client_cert: str | None = None, client_key: str | None = None,
+                 ca_cert: str | None = None):
         super().__init__()
-        self.api_client = APIClient(base_url)
+        self.api_client = APIClient(base_url, client_cert=client_cert, client_key=client_key, ca_cert=ca_cert)
         self.attacks_dir = attacks_dir
         self.arc_dir = os.path.dirname(os.path.abspath(__file__))
         self.session: Session | None = None
@@ -41,6 +49,9 @@ class ARCApp(App):
 
     def on_mount(self) -> None:
         self.push_screen(LoginScreen(self.api_client, self._on_login_success))
+
+    def on_resize(self) -> None:
+        self.refresh(layout=True)
 
     def _on_login_success(self, session: Session) -> None:
         self.session = session
@@ -77,15 +88,35 @@ class ARCApp(App):
 
 
 def main() -> None:
+    arc_dir = os.path.dirname(os.path.abspath(__file__))
+    certs_dir = os.path.join(arc_dir, "certs")
+
     parser = argparse.ArgumentParser(description="ARC -- AI Red Team Console")
-    parser.add_argument("--base-url", default="http://127.0.0.1:8000")
+    # ARC's default target is its own mTLS-required port -- see
+    # app/security/mtls.py and scripts/generate_mtls_certs.sh on the
+    # platform side. :8000 (no client cert required) is for the browser
+    # UI/normal agents, not ARC.
+    parser.add_argument("--base-url", default="https://127.0.0.1:8443")
     parser.add_argument(
         "--attacks-dir",
-        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "llm-redteam", "attacks"),
+        default=os.path.join(arc_dir, "..", "llm-redteam", "attacks"),
     )
+    parser.add_argument("--client-cert", default=os.path.join(certs_dir, "arc-client.crt"))
+    parser.add_argument("--client-key", default=os.path.join(certs_dir, "arc-client.key"))
+    parser.add_argument("--ca-cert", default=os.path.join(certs_dir, "ca.crt"))
     args = parser.parse_args()
 
-    app = ARCApp(base_url=args.base_url, attacks_dir=args.attacks_dir)
+    # Set before RedTeamBridge is ever constructed (lazily, later in the
+    # session) so llm-redteam/runner.py's module-level _session picks up
+    # the same client identity ARC's own APIClient uses.
+    os.environ["ARC_CLIENT_CERT"] = args.client_cert
+    os.environ["ARC_CLIENT_KEY"] = args.client_key
+    os.environ["ARC_CA_CERT"] = args.ca_cert
+
+    app = ARCApp(
+        base_url=args.base_url, attacks_dir=args.attacks_dir,
+        client_cert=args.client_cert, client_key=args.client_key, ca_cert=args.ca_cert,
+    )
     app.run()
 
 

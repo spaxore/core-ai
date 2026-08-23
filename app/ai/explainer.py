@@ -100,6 +100,39 @@ def summarize_evidence(category, evidence):
             "services": services,
         }
 
+    if "STATUS_DETAILS" in first and "SERVICE_CODE" in first:
+        dates = [r["START_DATE"] for r in evidence if r.get("START_DATE")]
+        oldest = min(dates) if dates else None
+        newest = max(dates) if dates else None
+        reasons = sorted(set(r.get("STATUS_DETAILS") for r in evidence if r.get("STATUS_DETAILS")))
+
+        return {
+            "shape": "renewal_failure",
+            "attempt_count": len(evidence),
+            "reasons": reasons,
+            "period_start": oldest.strftime("%d/%m/%Y") if oldest else None,
+            "period_end": newest.strftime("%d/%m/%Y") if newest else None,
+        }
+
+    # Checked before the generic DA_VALUE+CHARGE_AMOUNT shape below: these
+    # rows also carry both keys, but CHARGE_AMOUNT is always 0 here (the
+    # real adjustment value lives in DA_AMOUNT/DEDICTATED_AMNT, a field
+    # unique to this table) -- falling through to that branch would
+    # silently produce "debited 0 DT", actively misrepresenting the finding.
+    if "DA_AMOUNT" in first and "DEDICTATED_AMNT" in first:
+        dates = [r["START_DATE"] for r in evidence if r.get("START_DATE")]
+        oldest = min(dates) if dates else None
+        newest = max(dates) if dates else None
+        total_da_amount = sum(r.get("DA_AMOUNT") or 0 for r in evidence)
+
+        return {
+            "shape": "da_adjustment",
+            "adjustment_count": len(evidence),
+            "total_da_amount": round(total_da_amount, 3),
+            "period_start": oldest.strftime("%d/%m/%Y") if oldest else None,
+            "period_end": newest.strftime("%d/%m/%Y") if newest else None,
+        }
+
     if "DA_VALUE" in first and "CHARGE_AMOUNT" in first:
         total_charged = sum(r.get("CHARGE_AMOUNT") or 0 for r in evidence)
         dates = [r["START_DATE"] for r in evidence if r.get("START_DATE")]
@@ -325,6 +358,14 @@ def build_fallback_sentence(summary):
             sentence += " Duree totale enregistree: " + str(summary["total_minutes"]) + " minutes."
         return sentence
 
+    if summary["shape"] == "renewal_failure":
+        sentence = str(summary["attempt_count"]) + " tentative(s) de renouvellement automatique du forfait ont echoue (" + ", ".join(summary["reasons"]) + ") entre le " + str(summary["period_start"]) + " et le " + str(summary["period_end"]) + ". Le forfait a probablement expire faute de renouvellement reussi, sans debit ponctuel constate."
+        return sentence
+
+    if summary["shape"] == "da_adjustment":
+        sentence = str(summary["adjustment_count"]) + " ajustement(s) de compte dedie ont ete trouves entre le " + str(summary["period_start"]) + " et le " + str(summary["period_end"]) + ", representant un mouvement de solde de " + str(summary["total_da_amount"]) + " (sens credit/debit non determine)."
+        return sentence
+
     return str(summary["row_count"]) + " enregistrement(s) trouve(s) pour cette periode."
 
 
@@ -350,6 +391,17 @@ def explain_investigation(category, evidence, confidence=None):
         return "Aucun enregistrement correspondant n'a ete trouve pour cette reclamation. Une verification manuelle complementaire peut etre necessaire."
 
     summary = summarize_evidence(category, evidence)
+
+    # These two shapes don't fit the "X DT debited" template every other
+    # shape shares (a failed renewal debited nothing; an adjustment's
+    # credit/debit direction isn't known) -- letting the free-text LLM
+    # loose on them risks it defaulting to that template's language
+    # anyway and inventing a debit that didn't happen. Skip straight to
+    # the deterministic sentence instead of trusting a figure-check retry
+    # to catch that after the fact.
+    if summary["shape"] in ("renewal_failure", "da_adjustment"):
+        return build_fallback_sentence(summary) + CONFIDENCE_CAVEATS.get(confidence, "")
+
     formatted = format_summary_for_prompt(summary)
     expected_figure = key_figure_for(summary)
 

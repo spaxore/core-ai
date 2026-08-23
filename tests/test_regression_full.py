@@ -1,6 +1,15 @@
-﻿import requests
+﻿import os
+import sys
+
+import requests
 
 BASE_URL = "http://127.0.0.1:8000"
+
+# agent1/SUPPORT_AGENT is the account this suite is meant to run as (see
+# demo_script.md) -- it's the role that actually files/investigates
+# complaints. Override via env vars rather than hardcoding a password here.
+LOGIN_USERNAME = os.getenv("REGRESSION_TEST_USERNAME", "agent1")
+LOGIN_PASSWORD = os.getenv("REGRESSION_TEST_PASSWORD")
 
 TEST_CASES = [
     {
@@ -39,10 +48,25 @@ print("=" * 70)
 print("REGRESSION TEST - Secure TT AI Agent")
 print("=" * 70)
 
+if not LOGIN_PASSWORD:
+    print(f"\nSet REGRESSION_TEST_PASSWORD (account: {LOGIN_USERNAME}) and re-run.")
+    sys.exit(1)
+
+login_response = requests.post(
+    f"{BASE_URL}/login",
+    json={"username": LOGIN_USERNAME, "password": LOGIN_PASSWORD},
+)
+if login_response.status_code != 200:
+    print(f"\nLogin failed ({login_response.status_code}): {login_response.text}")
+    sys.exit(1)
+
+auth_header = {"Authorization": f"Bearer {login_response.json()['access_token']}"}
+print(f"Logged in as {LOGIN_USERNAME}.")
+
 results = []
 
 for case in TEST_CASES:
-    response = requests.post(f"{BASE_URL}/investigate", json={"text": case["text"]})
+    response = requests.post(f"{BASE_URL}/investigate", json={"text": case["text"]}, headers=auth_header)
     data = response.json()
 
     classification = data.get("classification", {})

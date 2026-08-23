@@ -771,6 +771,16 @@ let authToken = null;
 let authUsername = null;
 let authRole = null;
 
+// /classify, /investigate, and /verify-case now return a structured
+// object ({message, risk_score, matched_categories}) as the 403 "detail"
+// on a Gateway block, not a plain string (see app/main.py) -- this reads
+// either shape so a real blocked request still shows a real message
+// instead of "[object Object]".
+function formatErrorDetail(detail, fallback) {
+  if (detail && typeof detail === "object") return detail.message || fallback;
+  return detail || fallback;
+}
+
 function formatCell(key, value) {
   if (value === null || value === undefined) return "";
   if (key === "START_DATE" && typeof value === "string") {
@@ -1257,7 +1267,7 @@ async function submitCorrection(scope) {
     });
     const investigateData = await investigateResponse.json();
     if (!investigateResponse.ok) {
-      alert('Erreur : ' + (investigateData.detail || 'action non autorisee.'));
+      alert('Erreur : ' + formatErrorDetail(investigateData.detail, 'action non autorisee.'));
       return;
     }
     if (!investigateData.log_id || !investigateData.evidence || investigateData.evidence.length === 0) {
@@ -1514,7 +1524,7 @@ async function submitComplaint() {
     }
     if (response.status === 403) {
       const errData = await response.json().catch(() => ({}));
-      alert('Acces refuse: ' + (errData.detail || 'action non autorisee.'));
+      alert('Acces refuse: ' + formatErrorDetail(errData.detail, 'action non autorisee.'));
       document.getElementById('pipelineCard').style.display = 'none';
       return;
     }

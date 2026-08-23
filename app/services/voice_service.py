@@ -3,6 +3,42 @@ from datetime import timedelta
 from app.database.oracle import get_connection
 from app.services.investigation_helpers import find_best_match, skip_trace_step
 from app.services.cross_source_search import CROSS_SOURCE_TIER_LABELS
+from app.services.renewal_service import (
+    ADJUSTMENT_TIER_LABEL,
+    RENEWAL_TIER_LABEL,
+    investigate_da_adjustment,
+    investigate_renewal_failure,
+)
+
+
+def _check_renewal_and_adjustment(msisdn, da_value, anchor_date, trace):
+    """
+    Tried after amount-matching has failed for VOICE_EXPIRATION but
+    before falling back to other charge sources: two real mechanisms
+    (a failed auto-renewal, a dedicated-account adjustment) explain a
+    "forfait expired" complaint without ever producing a matching
+    CHARGE_AMOUNT row, which is exactly the case amount-matching can
+    never find no matter how wide the search window. Skipped entirely
+    (not even attempted) if there's no anchor_date to search around.
+    """
+    if anchor_date is None:
+        return None
+
+    renewal = investigate_renewal_failure(msisdn, anchor_date)
+    if renewal is not None:
+        trace.append({"label": RENEWAL_TIER_LABEL, "status": "ok",
+                       "detail": f"{len(renewal['evidence'])} tentative(s) échouée(s) trouvée(s)"})
+        return renewal
+    trace.append({"label": RENEWAL_TIER_LABEL, "status": "empty", "detail": "Aucune tentative échouée"})
+
+    adjustment = investigate_da_adjustment(msisdn, da_value, anchor_date)
+    if adjustment is not None:
+        trace.append({"label": ADJUSTMENT_TIER_LABEL, "status": "ok",
+                       "detail": f"{len(adjustment['evidence'])} ajustement(s) trouvé(s)"})
+        return adjustment
+    trace.append({"label": ADJUSTMENT_TIER_LABEL, "status": "empty", "detail": "Aucun ajustement trouvé"})
+
+    return None
 
 
 def _skip_cross_source(trace):
@@ -158,6 +194,11 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
         trace.append({"label": "Recherche élargie — tous buckets", "status": "empty",
                        "detail": "N'explique toujours pas le montant déclaré"})
 
+        renewal_or_adjustment = _check_renewal_and_adjustment(msisdn, da_value, anchor_date, trace)
+        if renewal_or_adjustment is not None:
+            renewal_or_adjustment["trace"] = trace
+            return renewal_or_adjustment
+
         from app.services.cross_source_search import try_cross_source_fallback
         return try_cross_source_fallback(
             msisdn, start_date, end_date, target_amount, anchor_date,
@@ -194,6 +235,11 @@ def investigate_voice_expiration(msisdn, start_date, end_date, da_value=None, ta
         }
     trace.append({"label": "Recherche — toutes les données voix", "status": "empty",
                    "detail": "N'explique pas le montant déclaré"})
+
+    renewal_or_adjustment = _check_renewal_and_adjustment(msisdn, da_value, anchor_date, trace)
+    if renewal_or_adjustment is not None:
+        renewal_or_adjustment["trace"] = trace
+        return renewal_or_adjustment
 
     from app.services.cross_source_search import try_cross_source_fallback
     return try_cross_source_fallback(
