@@ -22,6 +22,14 @@ INJECTION_PATTERNS = [
     (r"select\s+.+\s+from", "SQLI_ATTEMPT", 50),
     (r"translate your (system prompt|instructions|rules)", "EXFILTRATION", 55),
     (r"'1'\s*=\s*'1'", "SQLI_ATTEMPT", 50),
+    # French equivalents -- complaint text is French by convention in this
+    # app (DI-010: same ignore-restrictions + reveal-internal-rules ask as
+    # DI-001, just phrased in French, which the English-only patterns above
+    # never covered).
+    (r"ignore (le|la|les|tout|toute|toutes) (contexte|restrictions?|règles?)", "DIRECT_INJECTION", 50),
+    (r"règles internes", "EXFILTRATION", 55),
+    (r"base de connaissances", "EXFILTRATION", 55),
+    (r"administrateur (système|systeme)", "ROLE_CONFUSION", 50),
 ]
 
 BLOCK_THRESHOLD = 50

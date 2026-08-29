@@ -3,7 +3,11 @@ import sys
 
 import requests
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "https://127.0.0.1:8000"
+# :8000 serves a self-signed server cert (no client cert required, unlike
+# ARC's :8443) -- verify against the same local CA scripts/generate_mtls_certs.sh
+# produced, rather than disabling verification outright.
+CA_CERT = os.path.join(os.path.dirname(__file__), "..", "certs", "ca.crt")
 
 # agent1/SUPPORT_AGENT is the account this suite is meant to run as (see
 # demo_script.md) -- it's the role that actually files/investigates
@@ -19,8 +23,8 @@ TEST_CASES = [
         "expect_evidence": True
     },
     {
-        "name": "SMS_VAS (21693926356)",
-        "text": "Le client teneur de la ligne 21693926356 reclame l'expiration brusque de 2.100 DT de son solde principale entre le 12 et 14/07/2026.",
+        "name": "SMS_VAS (21694583050)",
+        "text": "Client 21694583050 se plaint d'une facturation SMS+/VAS de 4.1 DT le 07/08/2026 qu'il ne reconnait pas.",
         "expected_category": "SMS_VAS",
         "expect_evidence": True
     },
@@ -32,13 +36,13 @@ TEST_CASES = [
     },
     {
         "name": "DATA_USAGE (21692918830)",
-        "text": "Client 21692918830 se plaint d'une consommation data excessive et anormale sur sa ligne.",
+        "text": "Client 21692918830 se plaint d'une consommation data anormale de 0.5 Go facturee 2.5 DT le 03/07/2026.",
         "expected_category": "DATA_USAGE",
         "expect_evidence": True
     },
     {
         "name": "SOS_CREDIT (21697865660)",
-        "text": "Client 21697865660 signale un probleme avec son avance SOS, le montant n'est pas correct.",
+        "text": "Client 21697865660 signale un probleme avec son avance SOS de 5 DT le 25/07/2026, le montant n'est pas correct.",
         "expected_category": "SOS_CREDIT",
         "expect_evidence": True
     },
@@ -55,6 +59,7 @@ if not LOGIN_PASSWORD:
 login_response = requests.post(
     f"{BASE_URL}/login",
     json={"username": LOGIN_USERNAME, "password": LOGIN_PASSWORD},
+    verify=CA_CERT,
 )
 if login_response.status_code != 200:
     print(f"\nLogin failed ({login_response.status_code}): {login_response.text}")
@@ -66,7 +71,9 @@ print(f"Logged in as {LOGIN_USERNAME}.")
 results = []
 
 for case in TEST_CASES:
-    response = requests.post(f"{BASE_URL}/investigate", json={"text": case["text"]}, headers=auth_header)
+    response = requests.post(
+        f"{BASE_URL}/investigate", json={"text": case["text"]}, headers=auth_header, verify=CA_CERT
+    )
     data = response.json()
 
     classification = data.get("classification", {})

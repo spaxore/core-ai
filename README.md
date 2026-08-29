@@ -153,7 +153,11 @@ engine - not a web dashboard, in the tradition of tools like `nmap`'s interactiv
 Restricted to the `SECURITY_ANALYST` role, with attack authoring, live results, and a
 local run-history log that diffs each run against the last.
 
-Current state: **38/38 attacks passing, zero open findings.** Five real gaps have been
+Current state: **41/42 attacks passing.** Two real gaps remain open at the Gateway
+itself - Unicode homoglyph evasion and Base64 instruction smuggling (see blueprint
+Section 8) - both still bypassing `inspect_prompt()`'s literal-substring matching
+entirely; a honeytoken-based detection layer catches what gets through on both, as a
+second, independent control rather than a Gateway patch. Six real gaps have been
 found and closed over the project's life, including a case where `/verify-case` was
 found to accept AI-consumed text with zero Gateway inspection - caught while building
 red-team coverage for the case-memory retrieval path, not discovered later in

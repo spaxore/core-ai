@@ -8,17 +8,27 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --tt-blue: #1978B6; --tt-blue-dark: #14608F; --tt-blue-soft: rgba(25,120,182,0.10);
-    --tt-teal: #2EBAA0; --tt-teal-dark: #229C86; --tt-teal-soft: rgba(46,186,160,0.12);
-    --tt-green: #2EB56D; --tt-green-soft: rgba(46,181,109,0.13);
-    --tt-amber: #FCBD2A; --tt-amber-soft: rgba(252,189,42,0.16);
-    --tt-red: #E8262E; --tt-red-soft: rgba(232,38,46,0.10);
-    --tt-gray: #9AA7AC; --tt-gray-soft: rgba(154,167,172,0.14);
-    --tt-ink: #0B2A45; --tt-surface: #F5F8FA; --tt-card: #FFFFFF;
-    --tt-text: #17262B; --tt-text-soft: #5B6E73; --tt-border: #E2E8ED;
-    --shadow-card: 0 1px 2px rgba(11,42,69,0.04), 0 8px 24px rgba(11,42,69,0.06);
+    --tt-blue: #1978B6; --tt-blue-dark: #14608F; --tt-blue-soft: rgba(25,120,182,0.16);
+    --tt-teal: #2EBAA0; --tt-teal-dark: #229C86; --tt-teal-soft: rgba(46,186,160,0.18);
+    --tt-green: #2EB56D; --tt-green-soft: rgba(46,181,109,0.18);
+    --tt-amber: #FCBD2A; --tt-amber-soft: rgba(252,189,42,0.20);
+    --tt-red: #E8262E; --tt-red-soft: rgba(232,38,46,0.16);
+    --tt-gray: #9AA7AC; --tt-gray-soft: rgba(154,167,172,0.16);
+    --tt-ink: #081420; --tt-surface: #060B11; --tt-card: rgba(22,34,47,0.3);
+    --tt-text: #EAF1F5; --tt-text-soft: #8AA0AC; --tt-border: #1E2C38;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.35), 0 16px 40px rgba(0,0,0,0.5);
+    /* readable text-on-tint pairs for soft/translucent badges on a dark surface */
+    --tt-blue-soft-text: #8FC4E6; --tt-teal-soft-text: #7FE3CF;
+    --tt-green-soft-text: #7FE0A8; --tt-amber-soft-text: #F5D06B;
+    --tt-red-soft-text: #FF9BA0; --tt-gray-soft-text: #A9B8BE;
   }
   * { box-sizing: border-box; }
+  ::selection { background: var(--tt-blue); color: #fff; }
+  * { scrollbar-color: #2A3A48 transparent; scrollbar-width: thin; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2A3A48; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: #3A4E5F; background-clip: padding-box; }
   html, body { height: 100%; }
   body {
     margin: 0;
@@ -100,8 +110,9 @@
   button.btn-outline:hover { background: var(--tt-surface); }
 
   /* ---- Authenticated shell ---- */
-  #appShell { display: none; min-height: 100vh; }
-  #appShell.visible { display: flex; }
+  #appShell { display: none; min-height: 100vh; position: relative; z-index: 20; }
+  #appShell.visible { display: flex; opacity: 0; pointer-events: none; transition: opacity .4s ease; }
+  body.sph-app-mode #appShell.visible { opacity: 1; pointer-events: auto; }
 
   .sidebar {
     position: fixed; top: 0; left: 0; bottom: 0; width: 220px; flex-shrink: 0;
@@ -123,7 +134,7 @@
   .sidebar-footer .who { color: #DDEEEC; font-weight: 600; }
   .sidebar-footer .logout { display: block; margin-top: 4px; color: #7FE0CE; text-decoration: underline; cursor: pointer; }
 
-  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; margin-left: 220px; }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; margin-left: 0; padding-top: 72px; }
   .topbar {
     height: 60px; border-bottom: 1px solid var(--tt-border); background: var(--tt-card);
     display: flex; align-items: center; justify-content: space-between; padding: 0 26px; flex-shrink: 0;
@@ -135,9 +146,15 @@
   .bell-btn {
     width: 34px; height: 34px; border-radius: 9px; background: var(--tt-surface);
     border: 1px solid var(--tt-border); display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
+    cursor: pointer; position: relative;
   }
   .bell-btn svg { width: 16px; height: 16px; stroke: var(--tt-text-soft); }
+  .notif-badge {
+    position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 999px; background: var(--tt-red); color: #fff; font-size: 10px; font-weight: 700;
+    display: none; align-items: center; justify-content: center; line-height: 1;
+    border: 2px solid var(--tt-surface);
+  }
   .notif-panel {
     position: absolute; top: 42px; right: 0; width: 300px; background: var(--tt-card);
     border: 1px solid var(--tt-border); border-radius: 12px; box-shadow: var(--shadow-card);
@@ -146,6 +163,19 @@
   .notif-panel.open { display: block; }
   .notif-header { padding: 12px 14px; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--tt-border); }
   .notif-empty { padding: 16px 14px; font-size: 12px; color: var(--tt-text-soft); }
+  .notif-list { max-height: 320px; overflow-y: auto; }
+  .notif-item {
+    display: flex; align-items: flex-start; gap: 9px; padding: 10px 14px;
+    cursor: pointer; border-bottom: 1px solid var(--tt-border);
+  }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item:hover { background: var(--tt-surface); }
+  .notif-item.unread .notif-item-title { font-weight: 700; }
+  .notif-dot { width: 8px; height: 8px; border-radius: 999px; margin-top: 4px; flex-shrink: 0; }
+  .notif-dot.done { background: var(--tt-green); }
+  .notif-dot.pending { background: var(--tt-amber); }
+  .notif-item-title { font-size: 12.5px; color: var(--tt-text); }
+  .notif-item-sub { font-size: 11px; color: var(--tt-text-soft); margin-top: 2px; }
 
   .global-back-btn {
     width: 34px; height: 34px; border-radius: 9px; background: var(--tt-surface);
@@ -157,6 +187,10 @@
   .global-back-btn:hover svg { stroke: var(--tt-blue-dark); }
 
   .content { flex: 1; overflow-y: auto; padding: 26px; width: 100%; }
+  /* New Investigation / ticket detail stay at the prototype's narrower,
+     centered column; History is deliberately left full-width -- its table
+     has too many columns to fit 900px without a horizontal scrollbar. */
+  #newInvestigationView, #ticketDetailView { max-width: 900px; margin: 0 auto; }
   .card { background: var(--tt-card); border: 1px solid var(--tt-border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow-card); }
   .card + .card { margin-top: 16px; }
   .card h3 { font-size: 12px; color: var(--tt-text-soft); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
@@ -166,7 +200,7 @@
     border-radius: 9px; font-size: 14px; font-family: inherit; resize: vertical; box-sizing: border-box;
     background: var(--tt-surface);
   }
-  textarea:focus { outline: none; border-color: var(--tt-blue); background: #fff; box-shadow: 0 0 0 3px var(--tt-blue-soft); }
+  textarea:focus { outline: none; border-color: var(--tt-blue); background: var(--tt-surface); box-shadow: 0 0 0 3px var(--tt-blue-soft); }
 
   /* ---- In-progress state: real pipeline phases, not fake generic stages ---- */
   .investigating-block {
@@ -296,10 +330,10 @@
   .status-row { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--tt-surface); border-radius: 10px; margin-top: 16px; flex-wrap: wrap; }
   .status-label-text { font-size: 11px; color: var(--tt-text-soft); text-transform: uppercase; letter-spacing: .04em; }
   .status-badge { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px; }
-  .status-ai_generated, .status-none { background: var(--tt-gray-soft); color: #5B6E73; }
-  .status-human_validated { background: var(--tt-green-soft); color: #1E8A54; }
-  .status-corrected { background: var(--tt-amber-soft); color: #8A6200; }
-  .status-rejected { background: var(--tt-red-soft); color: #B01E26; }
+  .status-ai_generated, .status-none { background: var(--tt-gray-soft); color: var(--tt-gray-soft-text); }
+  .status-human_validated { background: var(--tt-green-soft); color: var(--tt-green-soft-text); }
+  .status-corrected { background: var(--tt-amber-soft); color: var(--tt-amber-soft-text); }
+  .status-rejected { background: var(--tt-red-soft); color: var(--tt-red-soft-text); }
   .status-actions { display: flex; gap: 8px; margin-left: auto; }
   .status-btn { padding: 7px 13px; font-size: 12px; border-radius: 8px; }
   .status-btn.validate { background: var(--tt-green); }
@@ -313,12 +347,12 @@
   .correction-label { font-size: 11px; color: var(--tt-text-soft); display: block; margin-bottom: 6px; }
   .correction-box textarea {
     width: 100%; min-height: 90px; padding: 10px; border: 1px solid var(--tt-border); border-radius: 8px;
-    font-family: inherit; font-size: 12.5px; background: #fff; box-sizing: border-box;
+    font-family: inherit; font-size: 12.5px; background: var(--tt-surface); color: var(--tt-text); box-sizing: border-box;
   }
   .correction-box button { margin-top: 8px; padding: 8px 16px; font-size: 12px; }
   .superseded-banner {
     display: none; margin-top: 16px; padding: 12px 16px; background: var(--tt-amber-soft);
-    border-radius: 10px; font-size: 12.5px; color: #8A6200;
+    border-radius: 10px; font-size: 12.5px; color: var(--tt-amber-soft-text);
   }
   .superseded-banner a { color: var(--tt-blue-dark); font-weight: 600; cursor: pointer; text-decoration: underline; margin-left: 6px; }
   .related-history-item {
@@ -341,13 +375,13 @@
   .badge-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .badge {
     display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
-    padding: 5px 10px; border-radius: 999px; background: var(--tt-blue-soft); color: var(--tt-blue-dark);
+    padding: 5px 10px; border-radius: 999px; background: var(--tt-blue-soft); color: var(--tt-blue-soft-text);
   }
   .badge-label { font-size: 10px; color: var(--tt-text-soft); text-transform: uppercase; letter-spacing: .04em; margin-right: 2px; }
   .confidence-badge { display: inline-block; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-  .confidence-high { background: var(--tt-green-soft); color: #1E8A54; }
-  .confidence-medium { background: var(--tt-amber-soft); color: #8A6200; }
-  .confidence-low { background: var(--tt-gray-soft); color: #5B6E73; }
+  .confidence-high { background: var(--tt-green-soft); color: var(--tt-green-soft-text); }
+  .confidence-medium { background: var(--tt-amber-soft); color: var(--tt-amber-soft-text); }
+  .confidence-low { background: var(--tt-gray-soft); color: var(--tt-gray-soft-text); }
   /* Styled hover tooltip (not native title) explaining what the confidence
      level actually means in this system's language -- one-line, matches
      the rest of the visual language instead of the browser's default box. */
@@ -385,8 +419,13 @@
   .history-filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
   .history-filters select, .history-filters input[type="text"] {
     padding: 8px 10px; border: 1px solid var(--tt-border); border-radius: 8px;
-    font-size: 13px; font-family: 'IBM Plex Sans', sans-serif; background: var(--tt-surface);
+    font-size: 13px; font-family: 'IBM Plex Sans', sans-serif; background: var(--tt-surface); color: var(--tt-text);
   }
+  /* The native dropdown popup (not the closed select box, which already
+     inherits the rule above) needs its own background/color -- most
+     browsers don't apply page CSS to that popup unless option itself is
+     styled directly. */
+  .history-filters select option { background: #0F1B26; color: var(--tt-text); }
   .history-filters button { padding: 8px 16px; }
   #historyTableBody td { font-size: 11.5px; }
   #historyTableBody .coverage-cell { color: var(--tt-text-soft); font-size: 11px; }
@@ -424,9 +463,197 @@
 
   .error-text { color: var(--tt-red); font-size: 13px; }
   .empty-text { color: var(--tt-text-soft); font-size: 13px; }
+
+  /* ---- Investigating-state orb (replaces the plain CSS spinner) ---- */
+  .orb-wrap { width: 48px; height: 48px; flex-shrink: 0; }
+  .orb-wrap canvas { width: 100%; height: 100%; }
+
+  /* ===== Sphere landing overlay -- scoped entirely under sph- to avoid
+     colliding with any existing app class (.card, .badge, .stat-*, etc.).
+     This is a dark, ambient "network view" shown right after login,
+     before the agent picks New investigation / History -- visually a
+     deliberate departure from the light functional app underneath, not
+     a mismatch. Real data (fetched from /investigations/history and
+     /investigations/stats, same endpoints the rest of the app already
+     uses), not decorative random nodes -- see sphLoadRealData() below.
+     Hidden by default (display:none), shown only while logged in and
+     not yet inside a real view -- see login()/logout()/sphShowLanding(). ===== */
+  #sphCanvas, #sphOverlay { display: none; }
+  #sphCanvas {
+    position: fixed; inset: 0; width: 100%; height: 100%; cursor: default;
+    z-index: 0; opacity: 1; transition: opacity .5s ease;
+    background: #060B11;
+  }
+  body.sph-app-mode #sphCanvas { opacity: 0.16; pointer-events: none; }
+  #sphOverlay {
+    position: fixed; inset: 0; z-index: 40; color: #EAF1F5;
+    font-family: 'IBM Plex Sans', Arial, sans-serif;
+    pointer-events: none;
+  }
+  .sph-badge, .sph-headline, .sph-hint, .sph-stats, .sph-tooltip, .sph-core-btn {
+    transition: opacity .35s ease;
+  }
+  /* No sidebar -- the topbar (brand + pillbar) is the permanent nav, in
+     and out of app mode, same as the original prototype. Only the
+     landing-only chrome (badge/headline/hint/stats/tooltip/core-button)
+     fades away once a real view is open underneath it. */
+  body.sph-app-mode .sph-badge, body.sph-app-mode .sph-headline,
+  body.sph-app-mode .sph-hint,
+  body.sph-app-mode .sph-stats, body.sph-app-mode .sph-tooltip,
+  body.sph-app-mode .sph-core-btn {
+    opacity: 0; pointer-events: none;
+  }
+  .sph-pill.sph-user { background: transparent; border-color: transparent; color: var(--tt-text-soft); font-weight: 500; }
+  .sph-pill.sph-user:hover { border-color: var(--tt-red-soft); color: var(--tt-red); }
+
+  /* Visually hidden but still in the accessibility tree / tab order --
+     the standard "clip" technique (display:none or visibility:hidden
+     would remove it from both). */
+  .sph-sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  /* The accessible entry point for the core (see the HTML comment above
+     it) -- an invisible circle sitting exactly over the core's screen
+     position. Mouse users interact with the canvas directly; this exists
+     for keyboard/screen-reader users, who have no other way to reach a
+     canvas-drawn element at all. */
+  /* :hover here beats the generic `button:hover { background: ... }` rule
+     elsewhere in this file (same specificity, but declared later) -- this
+     button must stay fully transparent always, it's an invisible hit-zone
+     over the canvas-drawn core, not a real visible button. */
+  .sph-core-btn, .sph-core-btn:hover, .sph-core-btn:focus, .sph-core-btn:active {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 84px; height: 84px; border-radius: 50%;
+    background: transparent; border: 2px solid transparent; cursor: pointer;
+    z-index: 6; pointer-events: auto; padding: 0;
+  }
+  .sph-core-btn:focus-visible {
+    border-color: var(--tt-blue); outline: none;
+    box-shadow: 0 0 0 4px rgba(25,120,182,0.25);
+  }
+  .sph-core-label {
+    position: fixed; left: 50%; top: 50%; z-index: 4; pointer-events: none;
+    transform: translate(-50%, 34px); text-align: center;
+    font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: #6E828E;
+    opacity: 0; transition: opacity .25s ease;
+  }
+  .sph-core-label.sph-show,
+  .sph-core-btn:focus-visible + .sph-core-label,
+  .sph-core-btn:hover + .sph-core-label {
+    opacity: 1;
+  }
+  body.sph-app-mode .sph-core-label { opacity: 0 !important; }
+
+  /* Staggered entrance for the New Investigation view's top-level blocks
+     when arriving from the sphere landing (not on every internal
+     navigation -- see sphAnimateEntrance()/sphGoToNew()). */
+  @keyframes sphEnterUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes sphPulseDot { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+  .sph-badge.sph-loading .sph-dot { animation: sphPulseDot 1s ease-in-out infinite; }
+
+  .sph-topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; padding: 20px 28px; pointer-events: none; }
+  .sph-brand { display: flex; align-items: center; gap: 11px; pointer-events: auto; cursor: pointer; }
+  .sph-brand-logo { width: 34px; height: 22px; flex-shrink: 0; }
+  .sph-brand-logo svg { width: 100%; height: 100%; }
+  .sph-brand-text .sph-name { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; color: #fff; }
+  .sph-brand-text .sph-sub { font-size: 10px; color: #2EBAA0; text-transform: uppercase; letter-spacing: .08em; margin-top: 1px; }
+
+  .sph-pillbar { display: flex; gap: 10px; pointer-events: auto; }
+  .sph-pill { background: rgba(10,18,27,0.8); border: 1px solid #1B2733; border-radius: 999px; padding: 9px 18px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s ease; color: #EAF1F5; backdrop-filter: blur(6px); font-family: 'IBM Plex Sans', Arial, sans-serif; }
+  .sph-pill.sph-primary { background: var(--tt-blue); border-color: var(--tt-blue); }
+  .sph-pill.sph-primary:hover { background: var(--tt-blue-dark); }
+  .sph-pill:not(.sph-primary):hover { border-color: var(--tt-blue); }
+
+  .sph-headline { position: fixed; top: 100px; right: 40px; max-width: 340px; text-align: left; z-index: 4; pointer-events: none; }
+  .sph-eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #6E828E; margin-bottom: 10px; }
+  .sph-h1 { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.01em; font-size: 34px; line-height: 1.12; margin: 0 0 14px; font-weight: 700; color: #EAF1F5; }
+  .sph-desc { font-size: 14px; line-height: 1.6; color: #A9BAC3; margin: 0; }
+
+  .sph-badge { position: fixed; top: 100px; left: 30px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6E828E; display: flex; align-items: center; gap: 7px; z-index: 4; }
+  .sph-badge .sph-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tt-blue); box-shadow: 0 0 8px var(--tt-blue); transition: all .4s ease; }
+  .sph-badge.sph-urgent { color: var(--tt-red); }
+  .sph-badge.sph-urgent .sph-dot { background: var(--tt-red); box-shadow: 0 0 8px var(--tt-red); }
+
+  .sph-hint { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #6E828E; letter-spacing: .06em; text-transform: uppercase; z-index: 4; text-align: center; line-height: 1.6; }
+
+  .sph-stats { position: fixed; bottom: 0; left: 0; right: 0; z-index: 4; display: grid; grid-template-columns: repeat(3,1fr); background: rgba(10,18,27,0.85); border-top: 1px solid #1B2733; backdrop-filter: blur(8px); }
+  .sph-stat { padding: 14px 24px; border-right: 1px solid #1B2733; }
+  .sph-stat:last-child { border-right: none; }
+  .sph-stat-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #6E828E; margin-bottom: 5px; }
+  .sph-stat-value { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; transition: color .4s ease; }
+  .sph-stat-value.sph-live { color: var(--tt-blue); }
+
+  .sph-tooltip { position: fixed; z-index: 6; background: rgba(10,18,27,0.95); border: 1px solid #1B2733; border-radius: 9px; padding: 10px 14px; font-size: 12px; line-height: 1.5; pointer-events: none; opacity: 0; transform: translate(-50%,-120%); transition: opacity .12s ease; white-space: nowrap; }
+  .sph-tooltip.sph-show { opacity: 1; }
+  .sph-tooltip .sph-t-name { font-weight: 700; font-size: 13px; }
+  .sph-tooltip .sph-t-sub { font-size: 10.5px; color: #6E828E; margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; }
+  #sphOverlay .sph-tooltip { border-color: #1c3450; }
+  #sphOverlay .sph-tooltip .sph-t-name { color: #a9d3ef; }
 </style>
 </head>
 <body>
+
+<canvas id="sphCanvas"></canvas>
+<div id="sphOverlay">
+  <div class="sph-topbar">
+    <div class="sph-brand" onclick="sphShowLanding()">
+      <div class="sph-brand-logo"><svg viewBox="0 0 108.5 70.6"><style>.st0{fill:#1978B6}.st1{fill:#35A9E0}.st2{fill:#225FAD}.st3{fill:#2EBAA0}.st4{fill:#28874E}.st5{fill:#2B9A97}.st6{fill:#33A55E}.st7{fill:#EFEB63}.st8{fill:#82C564}.st9{fill:#E8262E}.st10{fill:#F1683C}.st11{fill:#FCBD2A}.st12{fill:#F89D5F}.st13{fill:#EE2E7E}.st14{fill:#762D8A}.st15{fill:#562B7B}.st16{fill:#DA5F75}.st17{fill:#F0597C}.st18{fill:#EF4137}.st19{fill:#F0522D}.st20{fill:#EF3830}.st21{fill:#E5499A}.st22{fill:#B53B88}.st23{fill:#6D2A84}.st24{fill:#D62228}.st25{fill:#21ACDB}.st26{fill:#2699BC}.st27{fill:#1E4583}.st28{fill:#2CAA9A}.st29{fill:#29B784}.st30{fill:#2EB56D}.st31{fill:#E7D555}.st32{fill:#68BF64}.st33{fill:#FAA82D}.st34{fill:#F6913F}.st35{fill:#FFFFFF}</style><g><path class="st0" d="M29.4,0.5c-0.4,0.1-2.1,0.5-2.5,0.6c-3.5,0.9-6.7,2.3-9.7,4.1l22.6,30L29.4,0.5z"/><path class="st1" d="M17.2,5.2c-3.8,2.3-7.2,5.4-9.9,9c-0.4,0.5-0.8,1-1.1,1.6l33.6,19.5L17.2,5.2z"/><path class="st2" d="M39.7,35.2L6.1,15.7C4,18.9,2.3,22.4,1.3,26.2c0,0,0,0,0,0c0,0,0,0,0,0c-0.7,2.5-1.1,6.2-1.2,8.9c0,0,0,0,0,0L39.7,35.2z"/><path class="st3" d="M39.5,0.1C38.7,0,33.7-0.2,29.4,0.5l10.4,34.7l9.6-33C45.2,1.1,42.3,0.4,39.5,0.1"/><polygon class="st4" points="39.7,35.2 73.2,12.8 66.6,9.4 62.3,7.3"/><path class="st5" d="M62.3,7.3c-2.3-1.2-3.9-1.8-5.5-2.4c-3.3-1.3-4.4-1.6-7.5-2.7l-9.6,33L62.3,7.3z"/><path class="st6" d="M91.8,23.8c-7-4.5-13.1-8.1-18.6-11.1c-1.1-0.6-2.2-1.1-3.3-1.7L39.7,35.2L91.8,23.8z"/><path class="st7" d="M108.5,35.2c-5-3.6-9.8-6.8-14.2-9.7c-0.8-0.6-1.7-1.1-2.5-1.6l-52,11.4L108.5,35.2z"/><polygon class="st8" points="91.8,23.8 90.8,23.2 89,22 86.9,20.7 84.4,19.2 81.3,17.4 78.5,15.7 39.7,35.2"/><polygon class="st9" points="39.7,35.2 73.1,57.7 66.6,61 62.4,63.1"/><path class="st10" d="M91.8,46.6c-4.8,3.1-9.2,5.8-13.3,8.1c-1.8,1-3.6,2-5.3,2.9c-1.1,0.6-2.2,1.1-3.2,1.7L39.7,35.2L91.8,46.6z"/><path class="st11" d="M108.5,35.2c-5,3.6-9.8,6.9-14.2,9.8c-0.8,0.6-1.7,1.1-2.5,1.6l-52-11.4L108.5,35.2z"/><polygon class="st12" points="91.8,46.6 88.1,49 84.4,51.2 81.2,53.1 78.5,54.7 39.7,35.2"/><path class="st13" d="M29.4,70c-0.4-0.1-2.1-0.4-2.5-0.6c-3.5-0.9-6.7-2.3-9.7-4.1l22.6-30.1L29.4,70z"/><path class="st14" d="M17.2,65.3c-3.8-2.3-7.2-5.4-9.9-9c-0.4-0.5-0.8-1-1.1-1.6l33.6-19.6L17.2,65.3z"/><path class="st15" d="M39.7,35.2L6.1,54.8C4,51.6,2.3,48.1,1.3,44.3c0,0,0,0,0,0c0,0,0,0,0,0c-0.7-2.5-1.1-6.3-1.3-9c0,0,0,0,0,0H39.7z"/><path class="st16" d="M39.5,70.5c-0.8,0.1-2,0.2-2,0.2c-0.4,0-1.8,0-1.8,0c-2.2,0-4.3-0.3-6.4-0.6l10.4-34.8l8.5,33.4c0,0-0.5,0.2-0.6,0.2C43.8,69.9,41.4,70.3,39.5,70.5"/><line class="st17" x1="48.3" y1="68.5" x2="39.7" y2="35.2"/><path class="st18" d="M62.4,63.1c-2.3,1.2-4,1.8-5.6,2.4c-3.3,1.3-5.4,2-8.5,3.1l-8.5-33.4L62.4,63.1z"/><path class="st19" d="M39.7,35.2l30.2,24.1c0-0.6-1.6-8-1.9-9.9L39.7,35.2z"/><path class="st20" d="M39.7,35.2L57,56.5c4.5,0.9,9.9,2.2,12.9,2.8L39.7,35.2z"/><polygon class="st21" points="17.2,65.3 39.7,35.2 32.6,59.3"/><path class="st22" d="M39.7,35.2L20.1,46.6c-0.2,1.5-1.9,15-2.9,18.7L39.7,35.2"/><polygon class="st23" points="0,35.2 39.7,35.2 20.1,46.6"/><polygon class="st13" points="32.6,59.3 39.7,35.2 48.3,68.6"/><polygon class="st24" points="57,56.5 39.7,35.2 48.3,68.6"/><polygon class="st25" points="17.2,5.2 39.7,35.2 32.1,9.8"/><path class="st26" d="M17.2,5.2c1.1,8.3,3.2,18.8,3.2,18.8l19.4,11.2L17.2,5.2z"/><polygon class="st27" points="0,35.2 39.7,35.2 20.4,24"/><polygon class="st28" points="32.1,9.8 39.7,35.2 49.3,2.3"/><line class="st29" x1="49.3" y1="2.3" x2="39.7" y2="35.2"/><polygon class="st6" points="69.9,11.1 57.1,13.8 39.7,35.2"/><polygon class="st3" points="49.3,2.3 57.1,13.8 39.8,35.1"/><polygon class="st30" points="69.9,11.1 39.7,35.2 68.6,20.7"/><path class="st31" d="M81.4,35.2c1.5-1.8,8.8-9.3,10.4-11.4l-52,11.4L81.4,35.2z"/><polygon class="st32" points="91.8,23.8 68.6,20.7 39.7,35.2"/><path class="st33" d="M81.4,35.2c3.4,3.5,8.7,9.8,10.4,11.4l-52-11.4L81.4,35.2z"/><polygon class="st34" points="91.8,46.6 68,49.4 39.7,35.2"/><path class="st35" d="M13.9,51.2h-1.4v5.4c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-5.4H9.9c-0.1,0-0.2-0.1-0.2-0.2v-0.7c0-0.1,0.1-0.2,0.2-0.2h4c0.1,0,0.2,0.1,0.2,0.2v0.7C14.1,51.2,14,51.2,13.9,51.2"/><path class="st35" d="M18.2,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-0.2c-0.4,0.3-0.8,0.4-1.3,0.4c-0.4,0-0.8-0.1-1-0.4c-0.3-0.3-0.4-0.9-0.4-1.6V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v2.9c0,0.4,0,0.7,0.2,0.9c0.1,0.1,0.3,0.2,0.5,0.2c0.3,0,0.7-0.2,0.9-0.4V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C18.4,56.8,18.3,56.9,18.2,56.9"/><path class="st35" d="M9.9,20.4v3.4H19v19.1c0,3.7,2.3,5,5,5h3.8V23.8h4.5c2.7,0,4.9-2.5,4.9-4.7v-3.4H14.8C11.6,15.7,9.9,18.3,9.9,20.4"/><path class="st35" d="M45,15.8c-3.2,0-5,2.5-5,4.7v3.4h9.1v19.1c0,3.7,2.3,5,5,5H58V23.8h4.5c2.7,0,4.9-2.5,4.9-4.7v-3.4H45z"/></g></svg></div>
+      <div class="sph-brand-text">
+        <div class="sph-name">TT AI</div>
+        <div class="sph-sub">Investigation - Vue d'ensemble</div>
+      </div>
+    </div>
+    <div class="sph-pillbar">
+      <div class="sph-pill" id="pillHistory" onclick="sphGoToHistory()">Historique</div>
+      <div class="sph-pill sph-user" id="pillUser" title="Se déconnecter" onclick="logout()">
+        <span id="sphLoggedInUser"></span> · Se déconnecter
+      </div>
+    </div>
+  </div>
+
+  <!-- kept off-screen, not removed -- login()/logout() write to these; the
+       visible user label lives in the pillbar's #sphLoggedInUser instead,
+       now that the sidebar (which used to show these directly) is gone. -->
+  <span id="loggedInUser" style="position:absolute; left:-9999px;"></span>
+  <span id="loggedInRole" style="position:absolute; left:-9999px;"></span>
+
+  <!-- The core itself (drawn on canvas, at dead center) is now the primary
+       "start an investigation" action -- this button is the accessible
+       entry point for it: a real, focusable DOM element (a canvas glow has
+       no place in the accessibility tree and no keyboard path at all), an
+       invisible circle sitting exactly over the core's screen position.
+       Its text is screen-reader-only; sighted mouse users already have the
+       canvas's own click/hover handling, sighted keyboard users get the
+       focus ring + the same label sighted mouse-hover users see (see
+       :focus-visible + .sph-core-label in CSS). Disabled (tabindex -1)
+       once inside a real view -- see sphGoToNew()/sphShowLanding(). -->
+  <button class="sph-core-btn" id="sphCoreBtn" onclick="sphActivateCore()">
+    <span class="sph-sr-only">Nouvelle investigation</span>
+  </button>
+  <div class="sph-core-label" id="sphCoreLabel">Cliquez sur le cœur pour commencer</div>
+
+  <div class="sph-badge" id="sphBadgeLeft"><span class="sph-dot"></span><span id="sphBadgeText">VUE RÉSEAU · EN DIRECT</span></div>
+
+  <div class="sph-headline">
+    <div class="sph-eyebrow" id="sphEyebrow">TICKETS RÉCENTS</div>
+    <h1 class="sph-h1" id="sphH1">Vos <span style="color:var(--tt-blue)">investigations</span>, en direct.</h1>
+    <p class="sph-desc" id="sphDesc">Cliquez le cœur au centre pour commencer une investigation. Chaque nœud est une investigation réelle — cliquez-en un, ou l'historique, pour ouvrir son dossier.</p>
+  </div>
+
+  <div class="sph-hint">CLIQUEZ LE CŒUR POUR COMMENCER · SURVOLEZ LES NŒUDS POUR UN APERÇU</div>
+
+  <div class="sph-stats">
+    <div class="sph-stat"><div class="sph-stat-label">Tickets affichés</div><div class="sph-stat-value sph-live" id="sphStatCount">0</div></div>
+    <div class="sph-stat"><div class="sph-stat-label">Confiance moyenne</div><div class="sph-stat-value sph-live" id="sphStatConf">0%</div></div>
+    <div class="sph-stat"><div class="sph-stat-label">Aujourd'hui</div><div class="sph-stat-value sph-live" id="sphStatToday">-</div></div>
+  </div>
+
+  <div class="sph-tooltip" id="sphTooltip">
+    <div class="sph-t-name" id="sphTName">-</div>
+    <div class="sph-t-sub" id="sphTSub">-</div>
+  </div>
+</div>
 
 <div id="loginScreen">
   <div class="glow-blob b1"></div>
@@ -451,38 +678,10 @@
     <div id="loginStatus"></div>
   </div>
 
-  <div class="login-footer">TT AI Investigation Platform · Usage interne — DCSI Kasbah</div>
+  <div class="login-footer">TT AI Investigation Platform · Usage interne</div>
 </div>
 
 <div id="appShell">
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-logo">
-        <svg viewBox="0 0 108.5 70.6"><style>.st0{fill:#1978B6}.st1{fill:#35A9E0}.st2{fill:#225FAD}.st3{fill:#2EBAA0}.st4{fill:#28874E}.st5{fill:#2B9A97}.st6{fill:#33A55E}.st7{fill:#EFEB63}.st8{fill:#82C564}.st9{fill:#E8262E}.st10{fill:#F1683C}.st11{fill:#FCBD2A}.st12{fill:#F89D5F}.st13{fill:#EE2E7E}.st14{fill:#762D8A}.st15{fill:#562B7B}.st16{fill:#DA5F75}.st17{fill:#F0597C}.st18{fill:#EF4137}.st19{fill:#F0522D}.st20{fill:#EF3830}.st21{fill:#E5499A}.st22{fill:#B53B88}.st23{fill:#6D2A84}.st24{fill:#D62228}.st25{fill:#21ACDB}.st26{fill:#2699BC}.st27{fill:#1E4583}.st28{fill:#2CAA9A}.st29{fill:#29B784}.st30{fill:#2EB56D}.st31{fill:#E7D555}.st32{fill:#68BF64}.st33{fill:#FAA82D}.st34{fill:#F6913F}.st35{fill:#FFFFFF}</style><g><path class="st0" d="M29.4,0.5c-0.4,0.1-2.1,0.5-2.5,0.6c-3.5,0.9-6.7,2.3-9.7,4.1l22.6,30L29.4,0.5z"/><path class="st1" d="M17.2,5.2c-3.8,2.3-7.2,5.4-9.9,9c-0.4,0.5-0.8,1-1.1,1.6l33.6,19.5L17.2,5.2z"/><path class="st2" d="M39.7,35.2L6.1,15.7C4,18.9,2.3,22.4,1.3,26.2c0,0,0,0,0,0c0,0,0,0,0,0c-0.7,2.5-1.1,6.2-1.2,8.9c0,0,0,0,0,0L39.7,35.2z"/><path class="st3" d="M39.5,0.1C38.7,0,33.7-0.2,29.4,0.5l10.4,34.7l9.6-33C45.2,1.1,42.3,0.4,39.5,0.1"/><polygon class="st4" points="39.7,35.2 73.2,12.8 66.6,9.4 62.3,7.3"/><path class="st5" d="M62.3,7.3c-2.3-1.2-3.9-1.8-5.5-2.4c-3.3-1.3-4.4-1.6-7.5-2.7l-9.6,33L62.3,7.3z"/><path class="st6" d="M91.8,23.8c-7-4.5-13.1-8.1-18.6-11.1c-1.1-0.6-2.2-1.1-3.3-1.7L39.7,35.2L91.8,23.8z"/><path class="st7" d="M108.5,35.2c-5-3.6-9.8-6.8-14.2-9.7c-0.8-0.6-1.7-1.1-2.5-1.6l-52,11.4L108.5,35.2z"/><polygon class="st8" points="91.8,23.8 90.8,23.2 89,22 86.9,20.7 84.4,19.2 81.3,17.4 78.5,15.7 39.7,35.2"/><polygon class="st9" points="39.7,35.2 73.1,57.7 66.6,61 62.4,63.1"/><path class="st10" d="M91.8,46.6c-4.8,3.1-9.2,5.8-13.3,8.1c-1.8,1-3.6,2-5.3,2.9c-1.1,0.6-2.2,1.1-3.2,1.7L39.7,35.2L91.8,46.6z"/><path class="st11" d="M108.5,35.2c-5,3.6-9.8,6.9-14.2,9.8c-0.8,0.6-1.7,1.1-2.5,1.6l-52-11.4L108.5,35.2z"/><polygon class="st12" points="91.8,46.6 88.1,49 84.4,51.2 81.2,53.1 78.5,54.7 39.7,35.2"/><path class="st13" d="M29.4,70c-0.4-0.1-2.1-0.4-2.5-0.6c-3.5-0.9-6.7-2.3-9.7-4.1l22.6-30.1L29.4,70z"/><path class="st14" d="M17.2,65.3c-3.8-2.3-7.2-5.4-9.9-9c-0.4-0.5-0.8-1-1.1-1.6l33.6-19.6L17.2,65.3z"/><path class="st15" d="M39.7,35.2L6.1,54.8C4,51.6,2.3,48.1,1.3,44.3c0,0,0,0,0,0c0,0,0,0,0,0c-0.7-2.5-1.1-6.3-1.3-9c0,0,0,0,0,0H39.7z"/><path class="st16" d="M39.5,70.5c-0.8,0.1-2,0.2-2,0.2c-0.4,0-1.8,0-1.8,0c-2.2,0-4.3-0.3-6.4-0.6l10.4-34.8l8.5,33.4c0,0-0.5,0.2-0.6,0.2C43.8,69.9,41.4,70.3,39.5,70.5"/><line class="st17" x1="48.3" y1="68.5" x2="39.7" y2="35.2"/><path class="st18" d="M62.4,63.1c-2.3,1.2-4,1.8-5.6,2.4c-3.3,1.3-5.4,2-8.5,3.1l-8.5-33.4L62.4,63.1z"/><path class="st19" d="M39.7,35.2l30.2,24.1c0-0.6-1.6-8-1.9-9.9L39.7,35.2z"/><path class="st20" d="M39.7,35.2L57,56.5c4.5,0.9,9.9,2.2,12.9,2.8L39.7,35.2z"/><polygon class="st21" points="17.2,65.3 39.7,35.2 32.6,59.3"/><path class="st22" d="M39.7,35.2L20.1,46.6c-0.2,1.5-1.9,15-2.9,18.7L39.7,35.2"/><polygon class="st23" points="0,35.2 39.7,35.2 20.1,46.6"/><polygon class="st13" points="32.6,59.3 39.7,35.2 48.3,68.6"/><polygon class="st24" points="57,56.5 39.7,35.2 48.3,68.6"/><polygon class="st25" points="17.2,5.2 39.7,35.2 32.1,9.8"/><path class="st26" d="M17.2,5.2c1.1,8.3,3.2,18.8,3.2,18.8l19.4,11.2L17.2,5.2z"/><polygon class="st27" points="0,35.2 39.7,35.2 20.4,24"/><polygon class="st28" points="32.1,9.8 39.7,35.2 49.3,2.3"/><line class="st29" x1="49.3" y1="2.3" x2="39.7" y2="35.2"/><polygon class="st6" points="69.9,11.1 57.1,13.8 39.7,35.2"/><polygon class="st3" points="49.3,2.3 57.1,13.8 39.8,35.1"/><polygon class="st30" points="69.9,11.1 39.7,35.2 68.6,20.7"/><path class="st31" d="M81.4,35.2c1.5-1.8,8.8-9.3,10.4-11.4l-52,11.4L81.4,35.2z"/><polygon class="st32" points="91.8,23.8 68.6,20.7 39.7,35.2"/><path class="st33" d="M81.4,35.2c3.4,3.5,8.7,9.8,10.4,11.4l-52-11.4L81.4,35.2z"/><polygon class="st34" points="91.8,46.6 68,49.4 39.7,35.2"/><path class="st35" d="M13.9,51.2h-1.4v5.4c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-5.4H9.9c-0.1,0-0.2-0.1-0.2-0.2v-0.7c0-0.1,0.1-0.2,0.2-0.2h4c0.1,0,0.2,0.1,0.2,0.2v0.7C14.1,51.2,14,51.2,13.9,51.2"/><path class="st35" d="M18.2,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-0.2c-0.4,0.3-0.8,0.4-1.3,0.4c-0.4,0-0.8-0.1-1-0.4c-0.3-0.3-0.4-0.9-0.4-1.6V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v2.9c0,0.4,0,0.7,0.2,0.9c0.1,0.1,0.3,0.2,0.5,0.2c0.3,0,0.7-0.2,0.9-0.4V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C18.4,56.8,18.3,56.9,18.2,56.9"/><path class="st35" d="M22.9,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-2.9c0-0.8-0.1-1-0.7-1c-0.3,0-0.6,0.1-0.9,0.3v3.6c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.7c0.1,0,0.2,0.1,0.2,0.2v0.2c0.5-0.3,0.8-0.4,1.3-0.4c1.2,0,1.4,0.9,1.4,2v2.9C23,56.8,22.9,56.9,22.9,56.9"/><path class="st35" d="M24.8,51.1H24c-0.1,0-0.2-0.1-0.2-0.2v-0.8c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2V51C25,51.1,24.9,51.1,24.8,51.1 M24.8,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C25,56.8,24.9,56.9,24.8,56.9"/><path class="st35" d="M27.3,56.9c-0.3,0-1,0-1.5-0.2c-0.1,0-0.2-0.1-0.2-0.2V56c0-0.1,0.1-0.1,0.1-0.1h0c0.4,0.1,1.1,0.1,1.4,0.1c0.5,0,0.6-0.2,0.6-0.4c0-0.2-0.1-0.3-0.4-0.5l-1.1-0.8c-0.4-0.3-0.7-0.7-0.7-1.2c0-0.9,0.5-1.3,1.6-1.3c0.7,0,1,0.1,1.5,0.2c0.1,0,0.1,0.1,0.1,0.2v0.5c0,0.1-0.1,0.2-0.1,0.2h0c-0.2,0-0.9-0.1-1.4-0.1c-0.4,0-0.6,0.1-0.6,0.4c0,0.1,0.1,0.2,0.3,0.4l1.1,0.7c0.7,0.5,0.8,0.9,0.8,1.4C28.9,56.3,28.4,56.9,27.3,56.9"/><path class="st35" d="M30.6,51.1h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-0.8c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2V51C30.8,51.1,30.7,51.1,30.6,51.1 M30.6,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v4.7C30.7,56.8,30.7,56.9,30.6,56.9"/><path class="st35" d="M35.2,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.9,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C35.4,54.7,35.3,54.7,35.2,54.7 M34.3,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L34.3,53.9L34.3,53.9z"/><path class="st35" d="M41.8,51.2h-1.4v5.4c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-5.4h-1.4c-0.1,0-0.2-0.1-0.2-0.2v-0.7c0-0.1,0.1-0.2,0.2-0.2h4c0.1,0,0.2,0.1,0.2,0.2v0.7C41.9,51.2,41.9,51.2,41.8,51.2"/><path class="st35" d="M46.1,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.9,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C46.2,54.7,46.2,54.7,46.1,54.7 M45.2,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L45.2,53.9L45.2,53.9z"/><path class="st35" d="M47.9,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-6.5c0-0.1,0.1-0.2,0.2-0.2h0.8c0.1,0,0.2,0.1,0.2,0.2v6.5C48.1,56.8,48,56.9,47.9,56.9"/><path class="st35" d="M52.6,54.7h-2.7v0c0,0.5,0.2,1.1,1,1.1c0.6,0,1.2-0.1,1.5-0.1h0c0.1,0,0.2,0,0.2,0.1v0.6c0,0.1,0,0.2-0.2,0.2c-0.5,0.1-0.8,0.2-1.6,0.2c-0.8,0-2-0.5-2-2.3V54c0-1.4,0.7-2.3,2-2.3c1.3,0,1.9,0.9,1.9,2.3v0.5C52.7,54.7,52.7,54.7,52.6,54.7 M51.7,53.9c0-0.7-0.4-1.1-0.9-1.1c-0.5,0-0.9,0.4-0.9,1.1v0L51.7,53.9L51.7,53.9z"/><path class="st35" d="M56.2,56.8c-0.2,0.1-0.6,0.1-1.1,0.1c-1.1,0-1.9-0.7-1.9-2.2v-0.8c0-1.5,0.8-2.2,1.9-2.2c0.5,0,0.9,0.1,1.1,0.1c0.1,0,0.2,0.1,0.2,0.2v0.6c0,0.1-0.1,0.1-0.1,0.1h0c-0.3,0-0.5-0.1-1.1-0.1c-0.4,0-0.8,0.2-0.8,1.2v0.8c0,0.9,0.4,1.2,0.8,1.2c0.5,0,0.7,0,1.1-0.1h0c0.1,0,0.1,0,0.1,0.1v0.6C56.4,56.7,56.3,56.8,56.2,56.8"/><path class="st35" d="M58.9,56.9c-1.3,0-2-0.9-2-2.2V54c0-1.3,0.7-2.2,2-2.2c1.3,0,1.9,1,1.9,2.2v0.7C60.8,56,60.2,56.9,58.9,56.9 M59.8,54c0-0.7-0.3-1.2-0.9-1.2c-0.6,0-0.9,0.5-0.9,1.2v0.7c0,0.7,0.3,1.2,0.9,1.2c0.6,0,0.9-0.5,0.9-1.2V54z"/><path class="st35" d="M67.3,56.9h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-3.1c0-0.7-0.1-0.9-0.6-0.9c-0.2,0-0.5,0.1-0.8,0.2c0,0.2,0,0.4,0,0.6v3.1c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2v-3.1c0-0.7-0.1-0.9-0.6-0.9c-0.2,0-0.4,0.1-0.8,0.3v3.6c0,0.1-0.1,0.2-0.2,0.2h-0.8c-0.1,0-0.2-0.1-0.2-0.2V52c0-0.1,0.1-0.2,0.2-0.2h0.7c0.1,0,0.2,0.1,0.2,0.2v0.2c0.3-0.2,0.7-0.4,1.2-0.4c0.5,0,0.8,0.2,1,0.4c0.4-0.3,0.8-0.4,1.3-0.4c1.1,0,1.4,0.8,1.4,1.9v3.1C67.4,56.8,67.3,56.9,67.3,56.9"/><path class="st35" d="M9.9,20.4v3.4H19v19.1c0,3.7,2.3,5,5,5h3.8V23.8h4.5c2.7,0,4.9-2.5,4.9-4.7v-3.4H14.8C11.6,15.7,9.9,18.3,9.9,20.4"/><path class="st35" d="M45,15.8c-3.2,0-5,2.5-5,4.7v3.4h9.1v19.1c0,3.7,2.3,5,5,5H58V23.8h4.5c2.7,0,4.9-2.5,4.9-4.7v-3.4H45z"/></g></svg>
-      </div>
-      <div>
-        <div class="brand-name">TT AI</div>
-        <div class="brand-sub">Investigation</div>
-      </div>
-    </div>
-    <div class="nav-item active" id="navNew" onclick="showView('new')">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      Nouvelle investigation
-    </div>
-    <div class="nav-item" id="navHistory" onclick="showView('history')">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
-      Historique
-    </div>
-    <div class="nav-item disabled">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-      Connaissances <span class="soon">à venir</span>
-    </div>
-    <div class="sidebar-footer">
-      Connecté en tant que <span class="who" id="loggedInUser"></span> (<span id="loggedInRole"></span>)
-      <span class="logout" id="logoutLink" onclick="logout()">Se déconnecter</span>
-    </div>
-  </aside>
-
   <div class="main">
     <div class="topbar">
       <div style="display:flex; align-items:center; gap:12px;">
@@ -495,12 +694,13 @@
         </div>
       </div>
       <div class="bell-wrap">
-        <div class="bell-btn" onclick="document.getElementById('notifPanel').classList.toggle('open')">
+        <div class="bell-btn" onclick="toggleNotifPanel()">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span class="notif-badge" id="notifBadge">0</span>
         </div>
         <div class="notif-panel" id="notifPanel">
           <div class="notif-header">Notifications</div>
-          <div class="notif-empty">Aucune notification pour le moment.</div>
+          <div class="notif-empty" id="notifList">Aucune notification pour le moment.</div>
         </div>
       </div>
     </div>
@@ -521,7 +721,7 @@
 
           <div class="investigating-block" id="investigatingBlock">
             <div class="investigating-header">
-              <div class="spinner"></div>
+              <div class="orb-wrap"><canvas id="orbCanvas"></canvas></div>
               <div class="investigating-text">
                 <div class="t">Analyse en cours…</div>
                 <div class="d">Interrogation des données réelles du client. Cela prend généralement quelques secondes.</div>
@@ -830,10 +1030,16 @@ async function login() {
     document.getElementById('appShell').classList.add('visible');
     document.getElementById('loggedInUser').textContent = authUsername;
     document.getElementById('loggedInRole').textContent = authRole;
+    document.getElementById('sphLoggedInUser').textContent = authUsername;
     statusEl.textContent = '';
     navStack = [];
     currentView = { type: 'new' };
     renderCurrentView();
+
+    document.getElementById('sphCanvas').style.display = 'block';
+    document.getElementById('sphOverlay').style.display = 'block';
+    document.body.classList.remove('sph-app-mode');
+    if (typeof sphStart === 'function') sphStart();
   } catch (err) {
     statusEl.innerHTML = '<span id="loginError">Erreur de connexion au serveur: ' + err.message + '</span>';
   } finally {
@@ -853,6 +1059,15 @@ function logout() {
   document.getElementById('complaintText').value = '';
   navStack = [];
   currentView = { type: 'new' };
+
+  document.getElementById('sphCanvas').style.display = 'none';
+  document.getElementById('sphOverlay').style.display = 'none';
+  document.body.classList.remove('sph-app-mode');
+
+  notifPending = [];
+  notifCompleted = [];
+  notifReadKeys.clear();
+  renderNotifications();
 }
 
 // Global navigation stack -- one back button in the topbar works from any
@@ -875,14 +1090,16 @@ function renderCurrentView() {
   document.getElementById('newInvestigationView').style.display = currentView.type === 'new' ? 'block' : 'none';
   document.getElementById('historyView').style.display = currentView.type === 'history' ? 'block' : 'none';
   document.getElementById('ticketDetailView').style.display = currentView.type === 'detail' ? 'block' : 'none';
-  document.getElementById('navNew').classList.toggle('active', currentView.type === 'new');
-  document.getElementById('navHistory').classList.toggle('active', currentView.type === 'history');
+  document.getElementById('pillHistory').classList.toggle('sph-primary', currentView.type === 'history');
 
   const [title, sub] = VIEW_TITLES[currentView.type];
   document.getElementById('pageTitle').textContent = title;
   document.getElementById('pageSub').textContent = sub;
 
   document.getElementById('globalBackBtn').style.visibility = navStack.length > 0 ? 'visible' : 'hidden';
+
+  const VIEW_CONTAINER_ID = { new: 'newInvestigationView', history: 'historyView', detail: 'ticketDetailView' };
+  if (typeof sphAnimateEntrance === 'function') sphAnimateEntrance('#' + VIEW_CONTAINER_ID[currentView.type]);
 
   if (currentView.type === 'new') {
     loadStats();
@@ -936,6 +1153,92 @@ async function loadStats() {
   }
 }
 
+// ---- Notification bell -- two real sources, no fake data:
+//  - "pending": tickets from real history that have a case file but no
+//    final human decision yet (no verification_status, or still
+//    ai_generated/human_reviewed) -- genuinely need someone's attention.
+//    Recomputed from loadRecentCards()'s already-fetched history data on
+//    every load/refresh, so it naturally drops an item the moment it's
+//    validated/corrected/rejected elsewhere.
+//  - "done": this session's own completed investigations, pushed the
+//    moment submitComplaint() gets a real result back (see there).
+//    Session-only, capped, most recent first.
+const NOTIF_PENDING_STATUSES = new Set(['', 'ai_generated', 'human_reviewed']);
+let notifPending = [];
+let notifCompleted = [];
+let notifSeq = 0;
+const notifReadKeys = new Set();
+
+function refreshPendingNotifications(historyList) {
+  notifPending = (historyList || [])
+    .filter(h => h.has_detail && NOTIF_PENDING_STATUSES.has(h.verification_status || ''))
+    .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+    .slice(0, 20)
+    .map(h => ({ logId: h.log_id, category: h.category || '?', msisdn: h.msisdn || '' }));
+  renderNotifications();
+}
+
+function pushCompletedNotification(logId, category, msisdn) {
+  if (!logId) return;
+  notifCompleted.unshift({ id: ++notifSeq, logId, category: category || '?', msisdn: msisdn || '' });
+  notifCompleted = notifCompleted.slice(0, 5);
+  renderNotifications();
+}
+
+function renderNotifications() {
+  const listEl = document.getElementById('notifList');
+  const badge = document.getElementById('notifBadge');
+  if (!listEl || !badge) return;
+
+  const items = [
+    ...notifCompleted.map(n => ({
+      key: 'd' + n.id, logId: n.logId, kind: 'done',
+      title: `Investigation #${n.logId} terminée`, sub: `${n.category} · ${n.msisdn}`,
+    })),
+    ...notifPending.map(n => ({
+      key: 'p' + n.logId, logId: n.logId, kind: 'pending',
+      title: `#${n.logId} en attente de validation`, sub: `${n.category} · ${n.msisdn}`,
+    })),
+  ];
+
+  const unreadCount = items.filter(it => !notifReadKeys.has(it.key)).length;
+  badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+  badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+
+  if (items.length === 0) {
+    listEl.className = 'notif-empty';
+    listEl.textContent = 'Aucune notification pour le moment.';
+    return;
+  }
+  listEl.className = 'notif-list';
+  listEl.innerHTML = items.map(it => `
+    <div class="notif-item${notifReadKeys.has(it.key) ? '' : ' unread'}" onclick="openNotification('${it.key}', ${it.logId})">
+      <span class="notif-dot ${it.kind}"></span>
+      <div class="notif-item-text">
+        <div class="notif-item-title">${it.title}</div>
+        <div class="notif-item-sub">${it.sub}</div>
+      </div>
+    </div>`).join('');
+}
+
+function openNotification(key, logId) {
+  notifReadKeys.add(key);
+  document.getElementById('notifPanel').classList.remove('open');
+  showTicketDetail(logId);
+  renderNotifications();
+}
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notifPanel');
+  const willOpen = !panel.classList.contains('open');
+  panel.classList.toggle('open', willOpen);
+  if (willOpen) {
+    notifCompleted.forEach(n => notifReadKeys.add('d' + n.id));
+    notifPending.forEach(n => notifReadKeys.add('p' + n.logId));
+    renderNotifications();
+  }
+}
+
 function ticketCardHtml(h) {
   const confClass = h.match_confidence ? h.match_confidence.toLowerCase() : 'low';
   const confLabel = h.match_confidence ? (CONFIDENCE_LABELS[h.match_confidence] || h.match_confidence) : '—';
@@ -963,6 +1266,7 @@ async function loadRecentCards() {
     });
     if (!response.ok) return;
     const data = await response.json();
+    refreshPendingNotifications(data.history || []);
     const withDetail = (data.history || []).filter(h => h.has_detail).slice(0, 3);
 
     if (withDetail.length === 0) {
@@ -1196,7 +1500,10 @@ function hideSupersededBanner(scope) {
 function updateStatusActionsVisibility(scope, status) {
   const actions = document.getElementById(STATUS_IDS[scope].actions);
   const hideValidateReject = status === 'human_validated';
-  actions.querySelector('.status-btn.validate').style.display = hideValidateReject ? 'none' : '';
+  // Once rejected, "Valider" no longer makes sense on this outcome --
+  // Corriger stays available (a rejected ticket may still be worth fixing
+  // and re-running), Rejeter itself stays too (re-affirming isn't harmful).
+  actions.querySelector('.status-btn.validate').style.display = (hideValidateReject || status === 'rejected') ? 'none' : '';
   actions.querySelector('.status-btn.reject').style.display = hideValidateReject ? 'none' : '';
 }
 
@@ -1258,7 +1565,10 @@ async function submitCorrection(scope) {
   }
 
   const button = document.querySelector('#' + ids.box + ' button');
+  const originalLabel = button.textContent;
   button.disabled = true;
+  button.textContent = 'Relance en cours…';
+  if (typeof sphSetThinking === 'function') sphSetThinking(true);
   try {
     const investigateResponse = await fetch('/investigate', {
       method: 'POST',
@@ -1286,11 +1596,15 @@ async function submitCorrection(scope) {
       return;
     }
 
+    if (typeof sphFireResponseBurst === 'function') sphFireResponseBurst();
+    if (typeof sphRefreshData === 'function') sphRefreshData();
     showTicketDetail(investigateData.log_id);
   } catch (err) {
     alert('Erreur lors de la correction: ' + err.message);
   } finally {
     button.disabled = false;
+    button.textContent = originalLabel;
+    if (typeof sphSetThinking === 'function') sphSetThinking(false);
   }
 }
 
@@ -1503,8 +1817,10 @@ async function submitComplaint() {
   btn.disabled = true;
   textarea.disabled = true;
   investigatingBlock.classList.add('active');
+  if (typeof initOrb === 'function') initOrb(); // block just became visible -- safe to size the canvas now
   resultBox.style.display = 'none';
   document.getElementById('pipelineCard').style.display = 'none';
+  if (typeof sphSetThinking === 'function') sphSetThinking(true);
 
   try {
     const response = await fetch('/investigate', {
@@ -1591,6 +1907,7 @@ async function submitComplaint() {
       hideSupersededBanner('result');
       updateStatusBadge('result', null);
       resultStatusRow.style.display = 'flex';
+      pushCompletedNotification(data.log_id, data.classification?.category, data.classification?.msisdn);
     } else {
       statusScopes.result.logId = null;
       resultStatusRow.style.display = 'none';
@@ -1603,12 +1920,18 @@ async function submitComplaint() {
     loadHistory();
     loadStats();
     loadRecentCards();
+    if (typeof sphRefreshData === 'function') sphRefreshData();
+    // A real conclusion was reached -- whether evidence was found or the
+    // assistant honestly reported nothing, that's still the core's
+    // "response" moment, distinct from the steady idle breathing.
+    if (typeof sphFireResponseBurst === 'function') sphFireResponseBurst();
   } catch (err) {
     alert('Erreur lors de la communication avec le serveur: ' + err.message);
   } finally {
     btn.disabled = false;
     textarea.disabled = false;
     investigatingBlock.classList.remove('active');
+    if (typeof sphSetThinking === 'function') sphSetThinking(false);
   }
 }
 
@@ -1644,6 +1967,762 @@ function initTooltips() {
     if (e.target.closest('[data-tooltip]')) tip.style.display = 'none';
   });
 }
+// ==== Investigating-state orb (canvas wireframe sphere) ====
+let _orbInitialized = false;
+function initOrb(){
+  if (_orbInitialized) return;
+  const canvas = document.getElementById('orbCanvas');
+  if (!canvas) return;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return;
+  _orbInitialized = true;
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const W = rect.width, H = rect.height;
+  const cx = W/2, cy = H/2, radius = Math.min(W,H)*0.4;
+
+  const N = 28;
+  const points = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < N; i++) {
+    const y = 1 - (i/(N-1))*2;
+    const r = Math.sqrt(1 - y*y);
+    const theta = golden * i;
+    points.push({ ox: Math.cos(theta)*r, oy: y, oz: Math.sin(theta)*r });
+  }
+  const edges = [];
+  const seen = new Set();
+  for (let i = 0; i < points.length; i++) {
+    const dists = [];
+    for (let j = 0; j < points.length; j++) {
+      if (i === j) continue;
+      const dx=points[i].ox-points[j].ox, dy=points[i].oy-points[j].oy, dz=points[i].oz-points[j].oz;
+      dists.push([dx*dx+dy*dy+dz*dz, j]);
+    }
+    dists.sort((a,b)=>a[0]-b[0]);
+    for (let k = 0; k < 2; k++) {
+      const j = dists[k][1];
+      const key = i < j ? i+'_'+j : j+'_'+i;
+      if (!seen.has(key)) { seen.add(key); edges.push([i,j]); }
+    }
+  }
+
+  let angle = 0;
+  function project(p){
+    const cosA=Math.cos(angle), sinA=Math.sin(angle);
+    const x=p.ox*cosA-p.oz*sinA, z=p.ox*sinA+p.oz*cosA;
+    const scale=1/(1.7-z*0.5);
+    return { x: cx+x*radius*scale, y: cy+p.oy*radius*scale, z, scale };
+  }
+  (function step(){
+    ctx.clearRect(0,0,W,H);
+    angle += 0.02;
+    const proj = points.map(project);
+    edges.map(([i,j])=>({i,j,z:(proj[i].z+proj[j].z)/2})).sort((a,b)=>a.z-b.z).forEach(({i,j})=>{
+      const p1=proj[i], p2=proj[j];
+      const a = 0.15 + ((p1.z+p2.z)/2+1)/2*0.35;
+      ctx.strokeStyle = `rgba(25,120,182,${a.toFixed(2)})`;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+    });
+    proj.sort((a,b)=>a.z-b.z).forEach(p=>{
+      ctx.beginPath();
+      ctx.fillStyle = 'rgb(25,120,182)';
+      ctx.globalAlpha = 0.5 + (p.z+1)/2*0.5;
+      ctx.arc(p.x,p.y,1.7*p.scale,0,Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+    requestAnimationFrame(step);
+  })();
+}
+
+// ==== Sphere landing overlay -- REAL data, not decorative ====
+// Every node is one real investigation, fetched from the same
+// /investigations/history and /investigations/stats endpoints the rest
+// of the app already uses (see loadStats()/loadRecentCards() above) --
+// no invented numbers. The toggle is an attention filter ("Toutes" vs
+// "À revoir"), not a marketing before/after switch: "À revoir" shows
+// only LOW-confidence investigations, i.e. the ones actually worth a
+// human glance, so this view has a real job instead of being purely
+// ambient. Clicking a node opens that exact investigation's real detail
+// view via the existing showTicketDetail()/goTo() machinery -- nothing
+// about navigation, evidence rendering, or the pipeline trace is
+// reimplemented here.
+(function(){
+  const overlay = document.getElementById('sphOverlay');
+  const canvas = document.getElementById('sphCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, DPR, cx, cy, radius;
+
+  function resize(){
+    DPR = window.devicePixelRatio || 1;
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W*DPR; canvas.height = H*DPR;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    cx = W/2; cy = H/2;
+    radius = Math.min(W,H) * 0.34;
+  }
+  window.addEventListener('resize', resize);
+
+  const CONF_WEIGHT = { HIGH: 0.9, MEDIUM: 0.6, LOW: 0.3 };
+
+  let sphAngle = 0;
+  const sphTilt = 0.16;
+  const golden = Math.PI * (3 - Math.sqrt(5));
+
+  let allInvestigations = []; // full fetched set, real /investigations/history rows
+  let points = [];        // real investigations only -- interactive, counted in stats
+  let ambientPoints = []; // decorative filler -- not real data, not interactive
+  let renderPoints = [];  // points.concat(ambientPoints), rebuilt alongside them
+  let edges = [];
+  let sphLoaded = false;
+
+  async function sphLoadRealData(){
+    if (!authToken) return;
+    try {
+      const [histResp, statsResp] = await Promise.all([
+        fetch('/investigations/history?limit=100', { headers: { 'Authorization': 'Bearer ' + authToken } }),
+        fetch('/investigations/stats', { headers: { 'Authorization': 'Bearer ' + authToken } })
+      ]);
+      const histData = histResp.ok ? await histResp.json() : { history: [] };
+      const statsData = statsResp.ok ? await statsResp.json() : {};
+      allInvestigations = (histData.history || []).filter(h => h.has_detail);
+
+      const statToday = document.getElementById('sphStatToday');
+      statToday.textContent = (statsData.investigations_today ?? '—');
+      sphLoaded = true;
+    } catch (err) {
+      allInvestigations = [];
+      sphLoaded = true;
+    }
+    initPoints();
+    buildEdges();
+    sphApplyState();
+    sphFirstLoadDone = true;
+  }
+
+  // Real ticket count drives the golden-spiral y-spread, same as the
+  // original sphere -- with too few real tickets, a fixed capacity budget
+  // only fills the sphere's polar cap instead of its full height (a flat
+  // "bowl" instead of a sphere). knownLogIds only tracks identity, for the
+  // spawn-in animation on a genuinely new ticket -- positions are free to
+  // resettle slightly when N changes, which reads as ambient motion since
+  // the sphere is already continuously rotating anyway.
+  const knownLogIds = new Set();
+  let sphFirstLoadDone = false;
+
+  // Ambient filler keeps the sphere looking full regardless of how few
+  // real investigations exist -- decorative only: not real data, never
+  // hoverable/clickable, dimmer than real nodes, excluded from the
+  // "Tickets affichés" count. Real + ambient share one golden-spiral
+  // layout (same N) so they interleave evenly across the whole sphere
+  // rather than ambient clumping wherever real nodes leave gaps.
+  const AMBIENT_TARGET = 70;
+
+  function initPoints(){
+    const now = performance.now();
+    const realN = allInvestigations.length;
+    const ambientN = Math.max(0, AMBIENT_TARGET - realN);
+    const N = realN + ambientN;
+
+    // On the very first load (login, not a later data refresh), stagger
+    // every node's bornAt across a short window instead of the whole
+    // sphere popping in at once -- reuses the same spawn-in ease a
+    // genuine new ticket gets (see nodeSpawnScale), just spread across
+    // real and ambient nodes alike so the sphere visibly assembles
+    // itself rather than appearing static and fully-formed.
+    const isFirstLoad = !sphFirstLoadDone;
+    const WAKE_SPAN_MS = 1400;
+    const wakeBornAt = i => now + (N > 1 ? i/(N-1) : 0) * WAKE_SPAN_MS + Math.random()*120;
+
+    points = allInvestigations.map((h, i) => {
+      const isNew = sphFirstLoadDone && !knownLogIds.has(h.log_id);
+      const y = N > 1 ? 1 - (2*i)/(N-1) : 0;
+      const r = Math.sqrt(Math.max(0, 1 - y*y));
+      const theta = golden * i;
+      const conf = (h.match_confidence || '').toUpperCase();
+      return {
+        ox: Math.cos(theta)*r, oy: y, oz: Math.sin(theta)*r,
+        bornAt: isNew ? now : (isFirstLoad ? wakeBornAt(i) : 0),
+        breathes: Math.random() < 0.4,
+        breathePhase: Math.random()*Math.PI*2,
+        breatheSpeed: 0.0009 + Math.random()*0.0013,
+        ticket: {
+          logId: h.log_id,
+          id: '#' + h.log_id,
+          category: h.category || '?',
+          confidence: CONF_WEIGHT[conf] !== undefined ? CONF_WEIGHT[conf] : 0.5,
+          confidenceLabel: conf || '—',
+          status: (h.category || '') + ' · ' + (h.msisdn || '')
+        }
+      };
+    });
+    allInvestigations.forEach(h => knownLogIds.add(h.log_id));
+
+    ambientPoints = [];
+    for (let k = 0; k < ambientN; k++) {
+      const i = realN + k;
+      const y = N > 1 ? 1 - (2*i)/(N-1) : 0;
+      const r = Math.sqrt(Math.max(0, 1 - y*y));
+      const theta = golden * i;
+      ambientPoints.push({
+        ox: Math.cos(theta)*r, oy: y, oz: Math.sin(theta)*r,
+        bornAt: isFirstLoad ? wakeBornAt(i) : 0,
+        breathes: Math.random() < 0.4,
+        breathePhase: Math.random()*Math.PI*2,
+        breatheSpeed: 0.0009 + Math.random()*0.0013,
+      });
+    }
+
+    renderPoints = points.concat(ambientPoints);
+  }
+
+  let adjacency = []; // adjacency[i] = list of node indices directly connected to i
+
+  function buildEdges(){
+    edges = [];
+    const seen = new Set();
+    for (let i = 0; i < renderPoints.length; i++) {
+      const dists = [];
+      for (let j = 0; j < renderPoints.length; j++) {
+        if (i === j) continue;
+        const dx=renderPoints[i].ox-renderPoints[j].ox, dy=renderPoints[i].oy-renderPoints[j].oy, dz=renderPoints[i].oz-renderPoints[j].oz;
+        dists.push([dx*dx+dy*dy+dz*dz, j]);
+      }
+      dists.sort((a,b)=>a[0]-b[0]);
+      for (let k = 0; k < Math.min(3, dists.length); k++) {
+        const j = dists[k][1];
+        const key = i < j ? i+'_'+j : j+'_'+i;
+        if (!seen.has(key)) { seen.add(key); edges.push([i,j]); }
+      }
+    }
+    adjacency = renderPoints.map(() => []);
+    edges.forEach(([i,j]) => { adjacency[i].push(j); adjacency[j].push(i); });
+    // Node indices can shift after a data refresh -- drop any in-flight
+    // signals rather than risk them pointing at the wrong node; they get
+    // replenished fresh on the next frame (see drawSignals).
+    signals = [];
+  }
+
+  function project(p){
+    const cosA = Math.cos(sphAngle), sinA = Math.sin(sphAngle);
+    let x = p.ox*cosA - p.oz*sinA;
+    let z = p.ox*sinA + p.oz*cosA;
+    let y = p.oy;
+    const cosT = Math.cos(sphTilt), sinT = Math.sin(sphTilt);
+    const y2 = y*cosT - z*sinT;
+    const z2 = y*sinT + z*cosT;
+    const scale = 1 / (1.7 - z2*0.55);
+    return { x: cx + x*radius*scale, y: cy + y2*radius*scale, z: z2, scale };
+  }
+
+  function colorsForState(){
+    return { line:'25,120,182', node:'143,196,230' };
+  }
+
+  // Shared by both the node draw and the edge draw so a "not born yet"
+  // node (bornAt in the future -- see initPoints()'s first-load stagger)
+  // is fully invisible on both ends, not just as a node -- clamped to
+  // [0,1] since (now - bornAt) starts out negative for a still-pending
+  // stagger delay, and Math.arc() throws on a negative radius.
+  function nodeSpawnScale(pt, now){
+    if (!pt.bornAt) return 1;
+    const spawnT = Math.max(0, Math.min(1, (now - pt.bornAt) / 650));
+    return 1 - Math.pow(1 - spawnT, 3); // ease-out cubic
+  }
+
+  // ---- Signal trails -- a "living network" effect: a trail travels from
+  // one node to a neighbor, and on arrival the destination node flashes
+  // (see FEED_PULSE_DURATION / pt.feedPulseAt in the main node-draw loop
+  // below) then immediately fires a new trail onward to one of *its*
+  // neighbors -- an unbroken chain hopping node to node, like a nerve
+  // impulse propagating through the network, not a dot commuting back and
+  // forth on one edge. No separate dot is drawn -- the trail line itself
+  // is the whole visual, ending exactly where the flash happens.
+  const SIGNAL_COUNT = 6;
+  let signals = [];
+  function spawnSignalFrom(i, avoid, now){
+    const neighbors = adjacency[i];
+    if (!neighbors || neighbors.length === 0) return null;
+    const choices = neighbors.filter(n => n !== avoid);
+    const j = (choices.length > 0 ? choices : neighbors)[Math.floor(Math.random()*(choices.length > 0 ? choices.length : neighbors.length))];
+    return { i, j, start: now, duration: 1800 + Math.random()*1400 };
+  }
+  function replenishSignals(now){
+    while (signals.length < SIGNAL_COUNT && edges.length > 0) {
+      const [i, j] = edges[Math.floor(Math.random()*edges.length)];
+      signals.push({ i, j, start: now, duration: 1800 + Math.random()*1400 });
+    }
+  }
+  function drawSignals(proj, now, lineColor, spawnScales){
+    for (let s = signals.length - 1; s >= 0; s--) {
+      const sig = signals[s];
+      const p1 = proj[sig.i], p2 = proj[sig.j];
+      if (!p1 || !p2) { signals.splice(s, 1); continue; }
+      const t = Math.min(1, (now - sig.start) / sig.duration);
+
+      if (t >= 1) {
+        // Arrived -- feed the destination node (triggers its flash in the
+        // main draw loop) and immediately continue the chain onward.
+        const destPoint = renderPoints[sig.j];
+        if (destPoint) destPoint.feedPulseAt = now;
+        const next = spawnSignalFrom(sig.j, sig.i, now);
+        if (next) signals[s] = next; else signals.splice(s, 1);
+        continue;
+      }
+
+      // Don't let a trail visibly race across a stretch of the sphere
+      // whose nodes haven't spawned in yet (first-load stagger, see
+      // initPoints()) -- fade it by the same endpoint spawn scale the
+      // edges use, so the network only "comes alive" with signal
+      // activity once it's actually visible.
+      const endpointSpawn = Math.min(spawnScales[sig.i], spawnScales[sig.j]);
+      if (endpointSpawn <= 0) continue;
+
+      const fadeIn = Math.min(1, t / 0.12);
+      const fadeOut = t > 0.72 ? Math.max(0, (1 - t) / 0.28) : 1;
+      const fade = fadeIn * fadeOut * endpointSpawn;
+      const x = p1.x + (p2.x - p1.x) * t;
+      const y = p1.y + (p2.y - p1.y) * t;
+      const edgeLen = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
+      const trailT = Math.max(0, t - 30/edgeLen);
+      const tx = p1.x + (p2.x - p1.x) * trailT;
+      const ty = p1.y + (p2.y - p1.y) * trailT;
+      ctx.strokeStyle = `rgba(${lineColor},${(0.85*fade).toFixed(2)})`;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y); ctx.stroke();
+    }
+    replenishSignals(now);
+  }
+
+  // ---- Orbiting rings -- a couple of wide elliptical orbit paths traced
+  // around the sphere (the actual ring line, like Saturn's rings), each
+  // with one or two small dots traveling along it. Separate from the
+  // surface nodes entirely, purely decorative (not real data, no
+  // hover/click). The ring path is sampled from the same 3D circle the
+  // dot travels, so the line and the dot always agree.
+  let orbitRings = [];
+  function initOrbiters(){
+    orbitRings = [];
+    const ringCount = 2;
+    for (let r = 0; r < ringCount; r++) {
+      orbitRings.push({
+        radiusMul: 1.35 + r*0.22,
+        tilt: -0.55 + r*0.5 + (Math.random()-0.5)*0.2,
+        dots: [0, Math.PI].map(basePhase => ({
+          speed: (0.00028 + Math.random()*0.00022) * (r % 2 === 0 ? 1 : -1),
+          phase: basePhase + Math.random()*0.6,
+        })),
+      });
+    }
+  }
+  function projectOrbit(ox, oy, oz, mul){
+    const cosA = Math.cos(sphAngle), sinA = Math.sin(sphAngle);
+    const x = ox*cosA - oz*sinA;
+    const z = ox*sinA + oz*cosA;
+    const cosT = Math.cos(sphTilt), sinT = Math.sin(sphTilt);
+    const y2 = oy*cosT - z*sinT;
+    const z2 = oy*sinT + z*cosT;
+    const scale = 1/(1.7 - z2*0.55);
+    return { x: cx + x*radius*mul*scale, y: cy + y2*radius*mul*scale, z: z2, scale };
+  }
+  function ringPoint(ring, ang){
+    const ox = Math.cos(ang), ozBase = Math.sin(ang);
+    const oy = ozBase*Math.sin(ring.tilt);
+    const oz = ozBase*Math.cos(ring.tilt);
+    return projectOrbit(ox, oy, oz, ring.radiusMul);
+  }
+  function drawOrbiters(now){
+    orbitRings.forEach(ring => {
+      // The ring line itself.
+      const SEGMENTS = 72;
+      ctx.beginPath();
+      for (let s = 0; s <= SEGMENTS; s++) {
+        const p = ringPoint(ring, (s/SEGMENTS)*Math.PI*2);
+        if (s === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      }
+      ctx.strokeStyle = 'rgba(25,120,182,0.16)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      // The traveling dots on top of it.
+      ring.dots.forEach(d => {
+        const p = ringPoint(ring, d.phase + now*d.speed);
+        const alpha = 0.35 + (p.z+1)/2*0.5;
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(25,120,182,${alpha.toFixed(2)})`;
+        ctx.arc(p.x, p.y, 1.7*p.scale, 0, Math.PI*2);
+        ctx.fill();
+      });
+    });
+  }
+
+  const mouse = { x:-9999, y:-9999 };
+  canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  canvas.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+  canvas.addEventListener('click', () => { if (hoveredNode) sphOpenTicket(hoveredNode.ticket.logId); });
+
+  let hoveredNode = null;
+  let hoverStartTime = 0;
+
+  // Radar-ping: two rings expanding + fading outward from the hovered
+  // node, staggered half a cycle apart, looping while the hover lasts.
+  const PULSE_RING_PERIOD = 1300;
+  function drawHoverPulse(x, y, now){
+    for (let k = 0; k < 2; k++) {
+      const t = (((now - hoverStartTime) + k*(PULSE_RING_PERIOD/2)) % PULSE_RING_PERIOD) / PULSE_RING_PERIOD;
+      const r = 4 + t*16;
+      const alpha = (1 - t) * 0.55;
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+      ctx.lineWidth = 1.2;
+      ctx.arc(x, y, r, 0, Math.PI*2);
+      ctx.stroke();
+    }
+  }
+
+  // ---- The core -- an always-on presence at the sphere's exact center,
+  // representing the assistant itself rather than any single ticket.
+  // Visible even with zero real investigations. Three states:
+  //   idle    -- slow steady breathing (default, most of the time)
+  //   active  -- quickens while a real /investigate call is actually in
+  //              flight (see sphSetThinking(), called from submitComplaint())
+  //   burst   -- one bigger outward ring, fired both on manual activation
+  //              (click/Enter -- see sphActivateCore()) and on a real
+  //              investigation completing (see sphFireResponseBurst())
+  // Plus a one-time "wake" envelope the first time the core ever appears
+  // in a session, and an occasional small idle "micro-thought" flicker so
+  // it still reads as alive even when nothing is happening at all.
+  const CORE_IDLE_PERIOD = 4200;
+  const CORE_ACTIVE_PERIOD = 1100;
+  let coreThinking = false;
+  let coreWakeAt = 0;
+  let coreFlickerAt = -Infinity;
+  let coreNextFlickerAt = Infinity;
+  let coreBursts = [];
+  function scheduleNextCoreFlicker(now){
+    coreNextFlickerAt = now + 20000 + Math.random()*20000;
+  }
+  function drawCore(now){
+    const period = coreThinking ? CORE_ACTIVE_PERIOD : CORE_IDLE_PERIOD;
+    const wave = (Math.sin((now % period) / period * Math.PI*2) + 1) / 2;
+    let coreR = 11 + wave * (coreThinking ? 6 : 4);
+    let coreAlpha = 0.4 + wave * (coreThinking ? 0.4 : 0.25);
+
+    const wakeT = coreWakeAt ? Math.min(1, (now - coreWakeAt) / 1200) : 1;
+    const wakeEnv = 1 - Math.pow(1 - wakeT, 3);
+    coreR *= wakeEnv;
+    coreAlpha *= wakeEnv;
+
+    if (now > coreNextFlickerAt) { coreFlickerAt = now; scheduleNextCoreFlicker(now); }
+    const flickerAge = now - coreFlickerAt;
+    if (flickerAge < 300) {
+      const fe = 1 - flickerAge/300;
+      coreR += 3*fe;
+      coreAlpha += 0.2*fe;
+    }
+
+    const glowR = coreR * 3.2;
+    const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,glowR);
+    grad.addColorStop(0, `rgba(25,120,182,${coreAlpha.toFixed(2)})`);
+    grad.addColorStop(0.5, `rgba(25,120,182,${(coreAlpha*0.35).toFixed(2)})`);
+    grad.addColorStop(1, 'rgba(25,120,182,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx,cy,glowR,0,Math.PI*2); ctx.fill();
+
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(230,241,248,${Math.min(1, coreAlpha+0.3).toFixed(2)})`;
+    ctx.arc(cx,cy, coreR*0.45, 0, Math.PI*2);
+    ctx.fill();
+
+    coreBursts = coreBursts.filter(b => now - b.start < b.duration);
+    coreBursts.forEach(b => {
+      const p = (now - b.start) / b.duration;
+      const eased = 1 - Math.pow(1-p, 1.6);
+      const r = coreR + eased * Math.max(W,H) * 0.85;
+      const a = (1-p) * 0.45;
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(76,195,255,${a.toFixed(2)})`;
+      ctx.lineWidth = 1.6 - p*1.1;
+      ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.stroke();
+    });
+  }
+
+  function step(now){
+    // A single uncaught error on any frame would otherwise stop this
+    // rAF chain forever (requestAnimationFrame(step) below never runs
+    // again) -- the sphere would just freeze until a full page reload.
+    // try/finally guarantees the loop always reschedules itself even if
+    // one frame's draw work throws, so a rare transient error costs one
+    // dropped frame instead of killing the animation for the rest of
+    // the session.
+    try {
+      stepFrame(now);
+    } catch (err) {
+      console.error('sphere step() error (frame skipped):', err);
+    } finally {
+      requestAnimationFrame(step);
+    }
+  }
+
+  function stepFrame(now){
+    now = now || performance.now();
+    ctx.clearRect(0,0,W,H);
+    const c = colorsForState();
+    sphAngle += 0.0016;
+
+    const proj = renderPoints.map(project);
+
+    if (renderPoints.length > 0) {
+      const hoveredIndex = hoveredNode ? renderPoints.indexOf(hoveredNode) : -1;
+      const spawnScales = renderPoints.map(pt => nodeSpawnScale(pt, now));
+
+      const edgeOrder = edges.map(([i,j]) => ({ i, j, z:(proj[i].z+proj[j].z)/2 })).sort((a,b)=>a.z-b.z);
+      edgeOrder.forEach(({i,j}) => {
+        const p1 = proj[i], p2 = proj[j];
+        // The web forms in step with its own endpoints -- an edge to a
+        // not-yet-spawned node stays invisible until that node does too
+        // (see nodeSpawnScale / initPoints()'s first-load stagger).
+        const edgeSpawn = Math.min(spawnScales[i], spawnScales[j]);
+        if (edgeSpawn <= 0) return;
+        const alpha = (0.06 + ((p1.z+p2.z)/2+1)/2*0.22) * edgeSpawn;
+        ctx.strokeStyle = `rgba(${c.line},${alpha.toFixed(2)})`;
+        ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+      });
+
+      drawSignals(proj, now, c.line, spawnScales);
+
+      const order = renderPoints.map((p,i) => ({ i, z: proj[i].z })).sort((a,b)=>a.z-b.z);
+      let closest = null, closestDist = 18;
+
+      order.forEach(({i,z}) => {
+        const p = proj[i];
+        const pt = renderPoints[i];
+        const isReal = !!pt.ticket;
+        const depthAlpha = isReal ? (0.22 + (z+1)/2*0.78) : (0.12 + (z+1)/2*0.30);
+        // Nodes ease in from 0 over ~650ms instead of popping in at full
+        // size: on a genuine new-ticket arrival for real nodes (see
+        // initPoints()), and staggered across the whole sphere -- real
+        // and ambient alike -- on the very first load, so the sphere
+        // visibly assembles itself instead of appearing all at once.
+        const spawnScale = spawnScales[i];
+        const isHovered = isReal && i === hoveredIndex;
+
+        // A random ~40% of nodes (real and ambient alike, see initPoints())
+        // slowly breathe -- a gentle size/opacity oscillation on its own
+        // randomized phase and speed, skipped on the hovered node so it
+        // doesn't compete with the hover pulse. Purely ambient life, not
+        // a signal of anything.
+        const breatheT = (!isHovered && pt.breathes) ? Math.sin(now*pt.breatheSpeed + pt.breathePhase) : 0;
+        const breatheScale = 1 + breatheT*0.35;
+        const breatheAlpha = 1 + breatheT*0.3;
+
+        // A signal trail arriving at this node (see drawSignals/
+        // spawnSignalFrom above) flashes it briefly -- a quick bright
+        // burst that decays, distinct from the slow ambient breathing.
+        // This is the visible "feed" moment: trail reaches node, node
+        // reacts, then a new trail departs from it.
+        const FEED_PULSE_DURATION = 550;
+        const feedAge = pt.feedPulseAt ? now - pt.feedPulseAt : Infinity;
+        const feedEnv = feedAge < FEED_PULSE_DURATION ? Math.pow(1 - feedAge/FEED_PULSE_DURATION, 2) : 0;
+
+        // Uniform -- no confidence/validation color-coding, every real
+        // investigation renders the same blue node, ambient filler dimmer
+        // still. Hover brightens and enlarges just that node.
+        const size = (isHovered ? 3.2 : (isReal ? 1.9 : 1.1)) * p.scale * spawnScale * breatheScale * (1 + feedEnv*1.4);
+        if (feedEnv > 0) {
+          const glowR = 18 * feedEnv * p.scale;
+          const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,glowR);
+          g.addColorStop(0, `rgba(255,255,255,${feedEnv.toFixed(2)})`);
+          g.addColorStop(0.5, `rgba(255,255,255,${(feedEnv*0.4).toFixed(2)})`);
+          g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(p.x,p.y,glowR,0,Math.PI*2); ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.fillStyle = (isHovered || feedEnv > 0.4) ? '#fff' : `rgb(${c.node})`;
+        ctx.globalAlpha = Math.min(1, depthAlpha * spawnScale * breatheAlpha);
+        ctx.arc(p.x,p.y, size, 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        if (isHovered) drawHoverPulse(p.x, p.y, now);
+
+        if (isReal) {
+          pt._sx = p.x; pt._sy = p.y;
+          const d = Math.hypot(p.x-mouse.x, p.y-mouse.y);
+          if (d < 15 && d < closestDist) { closestDist = d; closest = pt; }
+        }
+      });
+
+      if (closest !== hoveredNode) hoverStartTime = now;
+      hoveredNode = closest;
+      canvas.style.cursor = hoveredNode ? 'pointer' : 'default';
+    } else {
+      hoveredNode = null;
+      canvas.style.cursor = 'default';
+    }
+    drawOrbiters(now);
+    drawCore(now);
+    updateSphTooltip();
+  }
+
+  function updateSphTooltip(){
+    const tooltip = document.getElementById('sphTooltip');
+    if (hoveredNode) {
+      document.getElementById('sphTName').textContent = hoveredNode.ticket.id;
+      document.getElementById('sphTSub').textContent = hoveredNode.ticket.status + ' · ' + hoveredNode.ticket.confidenceLabel;
+      tooltip.style.left = hoveredNode._sx + 'px';
+      tooltip.style.top = (hoveredNode._sy - 8) + 'px';
+      tooltip.classList.add('sph-show');
+    } else {
+      tooltip.classList.remove('sph-show');
+    }
+  }
+
+  function sphAnimateNumber(el, from, to, suffix, duration=600){
+    const start = performance.now();
+    function frame(now){
+      const p = Math.min(1, (now-start)/duration);
+      const eased = 1 - Math.pow(1-p, 3);
+      el.textContent = Math.round(from + (to-from)*eased) + suffix;
+      if (p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function sphApplyState(){
+    const badgeText = document.getElementById('sphBadgeText');
+    const badgeLeft = document.getElementById('sphBadgeLeft');
+    const eyebrow = document.getElementById('sphEyebrow');
+    const h1 = document.getElementById('sphH1');
+    const desc = document.getElementById('sphDesc');
+    const statCount = document.getElementById('sphStatCount');
+    const statConf = document.getElementById('sphStatConf');
+
+    const avgConf = points.length
+      ? Math.round(points.reduce((s,p)=>s+p.ticket.confidence,0)/points.length*100)
+      : 0;
+
+    badgeText.textContent = sphLoaded ? 'VUE RÉSEAU · EN DIRECT' : 'CHARGEMENT…';
+    badgeLeft.classList.remove('sph-urgent');
+    badgeLeft.classList.toggle('sph-loading', !sphLoaded);
+    eyebrow.textContent = 'TICKETS RÉCENTS';
+    h1.innerHTML = 'Cliquez le <span style="color:var(--tt-blue)">cœur</span> pour commencer.';
+    desc.textContent = points.length > 0
+      ? "Chaque nœud autour est une investigation réelle -- cliquez-en un, ou l'historique, pour ouvrir son dossier."
+      : "Aucune investigation avec dossier complet pour le moment.";
+    [statCount, statConf].forEach(el => { el.classList.remove('sph-attn'); el.classList.add('sph-live'); });
+    sphAnimateNumber(statCount, 0, points.length, '');
+    sphAnimateNumber(statConf, 0, avgConf, '%');
+  }
+
+  // ---- landing <-> app mode + real-app handoff ----
+  // The sphere never actually stops rendering: entering "app mode" just
+  // dims the canvas (CSS opacity + pointer-events:none) and fades out the
+  // landing-only chrome (badge/headline/hint/toggle/stats). #appShell
+  // itself (sidebar, showView, goTo, ...) is untouched real functionality
+  // -- this only toggles a body class that CSS reacts to.
+  const coreBtn = document.getElementById('sphCoreBtn');
+  const coreLabel = document.getElementById('sphCoreLabel');
+  window.sphShowLanding = function(){
+    document.body.classList.remove('sph-app-mode');
+    coreBtn.tabIndex = 0;
+  };
+  // Exposed globally -- renderCurrentView() (a plain top-level function,
+  // outside this IIFE) calls this on every navigation, not just the first
+  // hop from the sphere landing, so switching views from inside the app
+  // (recent-investigation card, today's-count stat, History button, a
+  // related-ticket row, ...) animates in the same way arriving fresh does.
+  window.sphAnimateEntrance = function(containerSelector){
+    const container = document.querySelector(containerSelector);
+    if (!container) return;
+    Array.from(container.children).forEach((el, i) => {
+      el.style.animation = 'none';
+      void el.offsetWidth; // force reflow so re-entering the view re-triggers it
+      el.style.animation = `sphEnterUp .5s cubic-bezier(.16,1,.3,1) ${i*90}ms both`;
+    });
+  };
+  window.sphGoToNew = function(){
+    document.body.classList.add('sph-app-mode');
+    coreBtn.tabIndex = -1;
+    if (typeof showView === 'function') showView('new');
+  };
+  window.sphGoToHistory = function(){
+    document.body.classList.add('sph-app-mode');
+    coreBtn.tabIndex = -1;
+    if (typeof showView === 'function') showView('history');
+  };
+  window.sphOpenTicket = function(logId){
+    document.body.classList.add('sph-app-mode');
+    coreBtn.tabIndex = -1;
+    if (typeof showTicketDetail === 'function') showTicketDetail(logId);
+  };
+  // The core is now the primary "start an investigation" action --
+  // clicking/Enter-ing it fires a burst (the same visual acknowledgment
+  // sphGoToHistory's pill click gets) and enters the New Investigation
+  // view, exactly like the old "+ Nouvelle investigation" pill did.
+  window.sphActivateCore = function(){
+    coreBursts.push({ start: performance.now(), duration: 1700 });
+    coreLabel.classList.remove('sph-show');
+    window.sphGoToNew();
+  };
+  // Real-activity hooks -- called from submitComplaint() so the core's
+  // "active" state and "response burst" reflect the assistant genuinely
+  // working, not just UI navigation. See app/static_ui.html's
+  // submitComplaint() for both call sites.
+  window.sphSetThinking = function(active){ coreThinking = active; };
+  // The burst itself was firing correctly all along -- the reason it read
+  // as "nothing happened" is that this always runs while still inside
+  // the New Investigation view, where body.sph-app-mode dims #sphCanvas
+  // to 16% opacity (see CSS). A 0.45-alpha ring at 16% canvas opacity is
+  // essentially invisible. Briefly lift the dim for the burst's duration
+  // so the pulse actually reads, then let CSS's transition ease it back
+  // down to the normal dimmed level on its own.
+  let burstOpacityTimer = null;
+  window.sphFireResponseBurst = function(){
+    coreBursts.push({ start: performance.now(), duration: 1700 });
+    if (document.body.classList.contains('sph-app-mode')) {
+      clearTimeout(burstOpacityTimer);
+      canvas.style.opacity = '0.75';
+      burstOpacityTimer = setTimeout(() => { canvas.style.opacity = ''; }, 1700);
+    }
+  };
+
+  // sphStart() is called from login() once a session exists -- fetches
+  // real data and (re)starts the render loop. Guarded so a second login
+  // in the same page load doesn't stack multiple rAF loops -- that same
+  // guard doubles as "first time this session", which is when the core's
+  // one-time wake animation fires and the label gets an unprompted first
+  // showing (hover/focus is the only way to see it again after that).
+  let sphRunning = false;
+  window.sphStart = function(){
+    resize();
+    sphApplyState();
+    sphLoadRealData();
+    if (!sphRunning) {
+      sphRunning = true;
+      initOrbiters();
+      const now = performance.now();
+      coreWakeAt = now;
+      scheduleNextCoreFlicker(now);
+      coreLabel.classList.add('sph-show');
+      setTimeout(() => coreLabel.classList.remove('sph-show'), 3200);
+      requestAnimationFrame(step);
+    }
+  };
+  // Called after a completed investigation (see submitComplaint()) so the
+  // new ticket shows up as a node with the spawn-in animation, without
+  // resetting the camera angle or re-running the whole sphStart() setup.
+  window.sphRefreshData = sphLoadRealData;
+})();
+
 initTooltips();
 </script>
 </body>
