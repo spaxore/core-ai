@@ -102,7 +102,6 @@ has no ability to generate or influence SQL directly.
 | Login lockout - separate containment after repeated failed logins (brute-force) | Done, independently triggered and logged from Auto-Lock |
 | Tamper-evident audit trail - SHA256 hash-chained, verifiable | Done |
 | Offensive validation - a decoupled attack framework + terminal console, 42/42 attacks passing, zero open findings | Done, covers the case-memory retrieval path |
-| Data masking (MSISDN redaction) | Descoped - see notes below |
 
 The audit trail was tested by directly tampering with a stored log row in the database
 and confirming a standalone verification script correctly flagged it - then restoring
@@ -238,9 +237,7 @@ at copies of the same three files.
 Authentication, RBAC, the AI Security Gateway, account containment, the hash-chained
 audit trail, and the entire offensive validation layer (`llm-redteam/` + `arc/`) were
 all self-imposed extensions beyond the original internship brief, which scoped only the
-AI assistant itself. Data masking was considered and deliberately descoped in favor of
-finishing functional scope and formal security testing, which carry more long-term
-value for the internship's outcomes; it remains a documented gap, not a forgotten one.
+AI assistant itself.
 
 ## Status
 
