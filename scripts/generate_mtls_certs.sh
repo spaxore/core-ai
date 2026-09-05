@@ -24,8 +24,17 @@ DAYS=825  # matches most CA/browser trust-store limits, generous for a dev/demo 
 
 echo "== CA =="
 openssl genrsa -out ca.key 4096
+# basicConstraints=CA:TRUE and keyUsage=keyCertSign are required by modern
+# OpenSSL (3.x, as shipped on current Kali) for a CA cert to validate at
+# all -- the original version of this script omitted them, which happened
+# to still work against Windows' more lenient default validation but fails
+# hard ("CA cert does not include key usage extension") on a stricter
+# client. Real bug, not a client-specific quirk, so it's fixed here rather
+# than worked around on the client side.
 openssl req -x509 -new -nodes -key ca.key -sha256 -days "$DAYS" \
   -subj "/O=Secure-TT-AI-Agent/CN=Secure-TT-AI-Agent Dev CA" \
+  -addext "basicConstraints=critical,CA:TRUE" \
+  -addext "keyUsage=critical,keyCertSign,cRLSign" \
   -out ca.crt
 
 echo "== Server cert (both :8000 and :8443) =="
