@@ -101,13 +101,13 @@ has no ability to generate or influence SQL directly.
 | Auto-Lock - account-level containment after repeated Gateway alerts (AI-subversion) | Done |
 | Login lockout - separate containment after repeated failed logins (brute-force) | Done, independently triggered and logged from Auto-Lock |
 | Tamper-evident audit trail - SHA256 hash-chained, verifiable | Done |
-| Offensive validation - a decoupled attack framework + terminal console, 38/38 attacks passing, zero open findings | Done, covers the case-memory retrieval path |
+| Offensive validation - a decoupled attack framework + terminal console, 42/42 attacks passing, zero open findings | Done, covers the case-memory retrieval path |
 | Data masking (MSISDN redaction) | Descoped - see notes below |
 
 The audit trail was tested by directly tampering with a stored log row in the database
 and confirming a standalone verification script correctly flagged it - then restoring
 it and reconfirming a clean chain. The Gateway itself has been exercised repeatedly by
-the red-team framework, catching and closing five real gaps to date (see
+the red-team framework, catching and closing eight real gaps to date (see
 `llm-redteam/README.md` and the project blueprint for the full history). This isn't
 just implemented, it's demonstrated.
 
@@ -153,15 +153,17 @@ engine - not a web dashboard, in the tradition of tools like `nmap`'s interactiv
 Restricted to the `SECURITY_ANALYST` role, with attack authoring, live results, and a
 local run-history log that diffs each run against the last.
 
-Current state: **41/42 attacks passing.** Two real gaps remain open at the Gateway
-itself - Unicode homoglyph evasion and Base64 instruction smuggling (see blueprint
-Section 8) - both still bypassing `inspect_prompt()`'s literal-substring matching
-entirely; a honeytoken-based detection layer catches what gets through on both, as a
-second, independent control rather than a Gateway patch. Six real gaps have been
-found and closed over the project's life, including a case where `/verify-case` was
-found to accept AI-consumed text with zero Gateway inspection - caught while building
-red-team coverage for the case-memory retrieval path, not discovered later in
-production.
+Current state: **42/42 attacks passing, zero open findings.** Eight real gaps have
+been found and closed over the project's life, including a case where `/verify-case`
+was found to accept AI-consumed text with zero Gateway inspection - caught while
+building red-team coverage for the case-memory retrieval path, not discovered later in
+production. The two most recent, Unicode homoglyph evasion and Base64 instruction
+smuggling (see blueprint Section 8), both bypassed `inspect_prompt()`'s
+literal-substring matching entirely; fixed by normalizing confusable Cyrillic/Greek
+characters to their Latin equivalents and by decoding-and-rescanning any Base64 spans
+in the request text, both confirmed against the live server. A honeytoken-based
+detection layer remains in place as a second, independent control alongside the
+Gateway fix, not a replacement for it.
 
 ## Tech stack
 
@@ -211,10 +213,25 @@ Requires a running Oracle 21c instance and Ollama with `llama3.1` pulled locally
 Visit `http://127.0.0.1:8000/ui` for the employee interface, or `http://127.0.0.1:8000/docs`
 for the API reference.
 
-To run the offensive validation console instead:
+ARC connects over a separate, mTLS-required port (`:8443`) rather than the plain
+`:8000` above. Generate the certs once (output goes to `certs/`, gitignored):
+
+    bash scripts/generate_mtls_certs.sh
+
+Copy `arc-client.crt`, `arc-client.key`, and `ca.crt` into `arc/certs/`, then run the
+second server and the console:
+
+    uvicorn app.main:app --ssl-keyfile certs/server.key --ssl-certfile certs/server.crt \
+        --ssl-ca-certs certs/ca.crt --ssl-cert-reqs 2 --port 8443
 
     cd arc
-    python arc.py --base-url http://127.0.0.1:8000 --attacks-dir ../llm-redteam/attacks
+    python arc.py
+
+ARC also runs the same way from any other machine on the network (it's been run from a
+separate Kali Linux VM against this platform, to demonstrate a genuine trust boundary
+between the security tooling and the system it validates) - just pass
+`--base-url https://<host-ip>:8443` and point `--client-cert`/`--client-key`/`--ca-cert`
+at copies of the same three files.
 
 ## Notes on scope
 
@@ -225,15 +242,11 @@ AI assistant itself. Data masking was considered and deliberately descoped in fa
 finishing functional scope and formal security testing, which carry more long-term
 value for the internship's outcomes; it remains a documented gap, not a forgotten one.
 
-The investigation trace/stepper (a live, step-by-step view of what the AI checked) is
-deliberately deferred - showing it accurately would require the investigation services
-to record intermediate search attempts they currently discard after use, a real design
-decision not yet made.
-
 ## Status
 
 All five functional categories are complete. The security layer, self-learning
-correction mechanism, and offensive validation layer are all functionally complete and
-independently verified, with zero open red-team findings as of the latest pass.
-Remaining work: VM-based network-separated deployment for ARC, and Phase 6
-documentation (architecture diagrams, threat model, final report).
+correction mechanism, investigation trace/stepper, and offensive validation layer are
+all functionally complete and independently verified, with zero open red-team findings
+as of the latest pass. ARC has also been deployed and run from a genuinely
+network-separated host (a Kali Linux VM), closing out that item. Remaining work: Phase
+6 documentation (architecture diagrams, threat model, final report).
