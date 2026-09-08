@@ -192,6 +192,7 @@
      centered column; History is deliberately left full-width -- its table
      has too many columns to fit 900px without a horizontal scrollbar. */
   #newInvestigationView, #ticketDetailView { max-width: 900px; margin: 0 auto; }
+  #usersView { max-width: 1040px; margin: 0 auto; }
   .card { background: var(--tt-card); border: 1px solid var(--tt-border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow-card); }
   .card + .card { margin-top: 16px; }
   .card h3 { font-size: 12px; color: var(--tt-text-soft); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
@@ -199,7 +200,7 @@
   textarea {
     width: 100%; min-height: 100px; padding: 12px; border: 1px solid var(--tt-border);
     border-radius: 9px; font-size: 14px; font-family: inherit; resize: vertical; box-sizing: border-box;
-    background: var(--tt-surface);
+    background: var(--tt-surface); color: var(--tt-text);
   }
   textarea:focus { outline: none; border-color: var(--tt-blue); background: var(--tt-surface); box-shadow: 0 0 0 3px var(--tt-blue-soft); }
 
@@ -504,9 +505,6 @@
   body.sph-app-mode .sph-core-btn, body.sph-app-mode .sph-ticker {
     opacity: 0; pointer-events: none;
   }
-  .sph-pill.sph-user { background: transparent; border-color: transparent; color: var(--tt-text-soft); font-weight: 500; }
-  .sph-pill.sph-user:hover { border-color: var(--tt-red-soft); color: var(--tt-red); }
-
   /* Visually hidden but still in the accessibility tree / tab order --
      the standard "clip" technique (display:none or visibility:hidden
      would remove it from both). */
@@ -561,11 +559,49 @@
   .sph-brand-text .sph-name-ai { font-size: 9px; font-weight: 700; color: #1978B6; letter-spacing: .03em; margin-left: 2px; position: relative; top: -2px; }
   .sph-brand-text .sph-sub { font-size: 10px; color: #2EBAA0; text-transform: uppercase; letter-spacing: .08em; margin-top: 1px; }
 
-  .sph-pillbar { display: flex; gap: 10px; pointer-events: auto; }
-  .sph-pill { background: rgba(10,18,27,0.8); border: 1px solid #1B2733; border-radius: 999px; padding: 9px 18px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s ease; color: #EAF1F5; backdrop-filter: blur(6px); font-family: 'IBM Plex Sans', Arial, sans-serif; }
-  .sph-pill.sph-primary { background: var(--tt-blue); border-color: var(--tt-blue); }
-  .sph-pill.sph-primary:hover { background: var(--tt-blue-dark); }
-  .sph-pill:not(.sph-primary):hover { border-color: var(--tt-blue); }
+  .sph-pillbar { display: flex; align-items: center; gap: 20px; pointer-events: auto; }
+
+  /* Historique nav link -- plain text. Gets the bright text + blue
+     underline while its view is active, toggled in renderCurrentView(). */
+  .sph-navlink {
+    background: none; border: none; border-bottom: 1px solid transparent; border-radius: 0;
+    padding: 0 0 3px; margin: 0; font-size: 13px; font-weight: 500; color: #9ba1b0;
+    cursor: pointer; font-family: 'IBM Plex Sans', Arial, sans-serif;
+    transition: color .15s ease, border-color .15s ease;
+  }
+  .sph-navlink:hover { color: #fff; }
+  .sph-navlink.sph-primary { color: #fff; font-weight: 600; border-bottom-color: #5db5ff; }
+
+  /* ---- Account avatar dropdown (Compte / Se déconnecter) ---- */
+  .sph-avatar-wrap { position: relative; }
+  .sph-avatar-btn { position: relative; width: 26px; height: 26px; cursor: pointer; }
+  .sph-avatar-circle {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: linear-gradient(135deg, #5b8def, #7ec8e3);
+    display: flex; align-items: center; justify-content: center;
+    font: 700 11px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0a0c11;
+  }
+  .sph-avatar-dot {
+    position: absolute; bottom: -1px; right: -1px; width: 8px; height: 8px; border-radius: 50%;
+    background: #4ade80; border: 2px solid #0a0c11;
+  }
+  .sph-account-menu {
+    display: none; position: absolute; top: 34px; right: 0; width: 250px;
+    border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: #0d1017;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5); overflow: hidden; z-index: 20;
+  }
+  .sph-account-menu.open { display: block; }
+  .sph-account-item {
+    display: flex; align-items: center; gap: 9px; padding: 11px 12px; cursor: pointer;
+    transition: background .12s ease;
+  }
+  .sph-account-item:hover { background: rgba(255,255,255,.05); }
+  .sph-account-item span {
+    font: 600 12px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: rgba(255,255,255,.9); white-space: nowrap;
+  }
+  .sph-account-logout span { color: #f38080; }
+  .sph-account-divider { height: 1px; background: rgba(255,255,255,.08); margin: 0 4px; }
 
   .sph-headline { position: fixed; left: 30px; bottom: 108px; max-width: 340px; text-align: left; z-index: 4; pointer-events: none; }
   .sph-eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #6E828E; margin-bottom: 10px; }
@@ -615,6 +651,205 @@
   .sph-tooltip .sph-t-sub { font-size: 10.5px; color: #6E828E; margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; }
   #sphOverlay .sph-tooltip { border-color: #1c3450; }
   #sphOverlay .sph-tooltip .sph-t-name { color: #a9d3ef; }
+
+  /* ---- Profile / settings view ---- */
+  .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+  .profile-avatar {
+    width: 52px; height: 52px; border-radius: 14px; background: var(--tt-blue-soft); color: var(--tt-blue);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px; flex-shrink: 0;
+  }
+  .profile-name { font-size: 18px; font-weight: 700; }
+  .profile-role {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;
+    font-size: 11.5px; font-weight: 600; color: #7FE3CF; background: var(--tt-teal-soft);
+    padding: 3px 9px; border-radius: 6px;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; color: var(--tt-text-soft); font-weight: 600; }
+  .field input, .field select {
+    padding: 10px 12px; border: 1px solid var(--tt-border); border-radius: 9px;
+    font-size: 13px; font-family: 'IBM Plex Sans', sans-serif; background: var(--tt-surface); color: var(--tt-text);
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--tt-blue); box-shadow: 0 0 0 3px var(--tt-blue-soft); }
+  .field-row { display: grid; grid-template-columns: 1fr 110px; gap: 12px; }
+  .field-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field-hint { font-size: 11.5px; color: var(--tt-text-soft); }
+  .form-actions { display: flex; gap: 10px; margin-top: 4px; align-items: center; }
+  .form-error { font-size: 12px; color: var(--tt-red); }
+  .form-ok { font-size: 12px; color: var(--tt-green); }
+
+  .link-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .link-identity { display: flex; align-items: center; gap: 12px; }
+  .link-avatar {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--tt-blue-soft);
+    display: flex; align-items: center; justify-content: center; color: var(--tt-blue); flex-shrink: 0;
+  }
+  .link-avatar svg { width: 20px; height: 20px; }
+  .link-email { font-weight: 600; font-size: 14.5px; }
+  .link-meta { font-size: 12px; color: var(--tt-text-soft); margin-top: 2px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; background: var(--tt-green-soft); color: #7FE0A8;
+  }
+  .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tt-green); }
+  .status-pill.pending { background: var(--tt-card); color: var(--tt-text-soft); }
+  .status-pill.pending .dot { background: var(--tt-text-soft); }
+  .link-form { display: none; flex-direction: column; gap: 14px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--tt-border); }
+  .link-form.open { display: flex; }
+
+  .pref-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--tt-border); }
+  .pref-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .pref-row:first-child { padding-top: 0; }
+  .pref-text b { display: block; font-size: 13px; font-weight: 600; }
+  .pref-text span { display: block; font-size: 12px; color: var(--tt-text-soft); margin-top: 2px; max-width: 48ch; }
+  .switch { position: relative; width: 40px; height: 23px; flex-shrink: 0; cursor: pointer; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch-track { position: absolute; inset: 0; background: var(--tt-border); border-radius: 999px; transition: .2s ease; }
+  .switch-track::before { content: ''; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s ease; }
+  .switch input:checked + .switch-track { background: var(--tt-blue); }
+  .switch input:checked + .switch-track::before { transform: translateX(17px); }
+
+  .segmented { display: inline-flex; background: var(--tt-surface); border: 1px solid var(--tt-border); border-radius: 9px; padding: 3px; gap: 3px; }
+  .segmented button { background: none; border: none; color: var(--tt-text-soft); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 7px; cursor: pointer; transition: .15s ease; }
+  .segmented button.active { background: var(--tt-blue); color: #fff; }
+
+  .activity-list { display: flex; flex-direction: column; }
+  .activity-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--tt-border); }
+  .activity-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .activity-item:first-child { padding-top: 0; }
+  .activity-icon { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .activity-icon svg { width: 15px; height: 15px; }
+  .activity-icon.login { background: var(--tt-blue-soft); color: var(--tt-blue); }
+  .activity-icon.investigate { background: var(--tt-teal-soft); color: var(--tt-teal); }
+  .activity-icon.validate { background: var(--tt-green-soft); color: var(--tt-green); }
+  .activity-icon.email { background: rgba(252,189,42,0.16); color: var(--tt-amber); }
+  .activity-icon.other { background: var(--tt-card); color: var(--tt-text-soft); }
+  .activity-body { flex: 1; min-width: 0; }
+  .activity-title { font-size: 13px; font-weight: 600; }
+  .activity-detail { font-size: 12px; color: var(--tt-text-soft); margin-top: 2px; overflow-wrap: anywhere; }
+  .activity-time { font-size: 11.5px; color: var(--tt-text-soft); white-space: nowrap; flex-shrink: 0; padding-top: 1px; }
+
+  .status-btn.email { background: var(--tt-blue); color: #fff; }
+  .status-btn.email:hover { background: var(--tt-blue-dark); }
+
+  .pw-row { display: flex; gap: 8px; }
+  .pw-row input { flex: 1; }
+  .status-pill.active { background: var(--tt-green-soft); color: #7FE0A8; }
+  .status-pill.active .dot { background: var(--tt-green); }
+  .status-pill.inactive { background: var(--tt-card); color: var(--tt-text-soft); border: 1px solid var(--tt-border); }
+  .status-pill.inactive .dot { background: var(--tt-text-soft); }
+  .activity-icon.alert { background: var(--tt-red-soft); color: var(--tt-red); }
+
+  .btn-danger { background: var(--tt-red); color: #fff; border: none; padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn-danger:hover { background: #c21f26; }
+  .confirm-icon { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+  .confirm-icon svg { width: 20px; height: 20px; }
+  .confirm-icon.warn { background: var(--tt-red-soft); color: var(--tt-red); }
+  .confirm-icon.neutral { background: var(--tt-blue-soft); color: var(--tt-blue); }
+
+  /* ---- Utilisateurs (admin) ---- */
+  .page-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 16px; }
+  .utable { width: 100%; table-layout: fixed; border-collapse: collapse; }
+  .utable thead th {
+    text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--tt-text-soft); font-weight: 600; padding: 0 16px 12px; border-bottom: 1px solid var(--tt-border);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .utable thead th:first-child, .utable tbody td:first-child { text-align: left; padding-left: 20px; }
+  .utable tbody td:last-child { padding-right: 20px; }
+  .utable tbody td { padding: 16px; border-bottom: 1px solid var(--tt-border); font-size: 13.5px; vertical-align: middle; font-family: 'IBM Plex Sans', sans-serif; overflow-wrap: break-word; text-align: center; }
+  .utable tbody tr:last-child td { border-bottom: none; }
+  .urow-user { display: flex; align-items: center; gap: 11px; text-align: left; }
+  .urow-avatar {
+    width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 13px; flex-shrink: 0;
+  }
+  .urow-avatar.role-support { background: var(--tt-teal-soft); color: var(--tt-teal); }
+  .urow-avatar.role-analyst { background: var(--tt-blue-soft); color: var(--tt-blue); }
+  .urow-created { font-size: 11.5px; color: var(--tt-text-soft); margin-top: 1px; }
+  .urow-lock-reason { font-size: 11px; color: var(--tt-text-soft); margin-top: 4px; }
+  .no-lock { font-size: 11.5px; color: var(--tt-text-soft); }
+  .lock-badge {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+    color: var(--tt-red); background: var(--tt-red-soft); padding: 4px 9px; border-radius: 7px;
+  }
+  .lock-badge svg { width: 11px; height: 11px; }
+
+  .row-actions { position: relative; white-space: nowrap; }
+  .row-actions-btn {
+    width: 32px; height: 32px; border-radius: 8px; background: var(--tt-surface); border: 1px solid var(--tt-border);
+    display: inline-flex; align-items: center; justify-content: center; color: var(--tt-text-soft); cursor: pointer;
+    flex-shrink: 0; font-size: 16px; line-height: 1; padding: 0; margin: 0 auto;
+  }
+  .row-actions-btn:hover { border-color: var(--tt-border); background: var(--tt-ink); }
+  .utable-wrapper { max-width: 100%; border: 1px solid var(--tt-border); border-radius: 9px; }
+  .row-menu {
+    /* plain CSS anchor, no JS-computed coordinates -- the table no longer
+       needs horizontal scroll (table-layout:fixed + capped page width), so
+       .row-actions (position:relative) can just anchor this directly under
+       its own button with top:100%, guaranteeing it always stays attached. */
+    position: absolute; top: calc(100% + 6px); right: 0; width: 220px; z-index: 40; text-align: left;
+    background: #0d1017; border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5); overflow: hidden;
+  }
+  .row-menu-item {
+    display: flex; align-items: center; gap: 9px; padding: 10px 12px; font-size: 12.5px; font-weight: 500;
+    color: rgba(255,255,255,.85); cursor: pointer;
+  }
+  .row-menu-item:hover { background: rgba(255,255,255,.05); }
+  .row-menu-item svg { width: 14px; height: 14px; stroke: rgba(255,255,255,.65); flex-shrink: 0; }
+  .row-menu-item.danger { color: #f38080; }
+  .row-menu-item.danger svg { stroke: #f38080; }
+  .row-menu-item.disabled { color: rgba(255,255,255,.3); cursor: default; }
+  .row-menu-item.disabled svg { stroke: rgba(255,255,255,.25); }
+  .row-menu-item.disabled:hover { background: none; }
+  .row-menu-divider { height: 1px; background: rgba(255,255,255,.08); margin: 4px; }
+  .access-denied-card { text-align: center; padding: 48px 24px; }
+
+  /* ---- Email compose modal ---- */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(3,7,11,0.72); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--tt-card-solid, #111c27); border: 1px solid var(--tt-border); border-radius: 16px;
+    width: 100%; max-width: 540px; max-height: 88vh; overflow-y: auto;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--tt-border); }
+  .modal-head h3 { font-size: 15px; margin: 0; text-transform: none; letter-spacing: normal; color: var(--tt-text); }
+  .modal-close { background: none; border: none; color: var(--tt-text-soft); cursor: pointer; font-size: 20px; line-height: 1; padding: 2px; }
+  .modal-close:hover { color: var(--tt-text); }
+  .modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; }
+  .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 16px 22px; border-top: 1px solid var(--tt-border); }
+
+  /* ---- Toast notifications (replaces native alert() for confirmations) ---- */
+  .toast-stack {
+    position: fixed; bottom: 24px; right: 24px; z-index: 100;
+    display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+  }
+  .toast {
+    display: flex; align-items: flex-start; gap: 11px; min-width: 280px; max-width: 380px;
+    background: var(--tt-card-solid, #111c27); border: 1px solid var(--tt-border); border-radius: 12px;
+    padding: 14px 16px; box-shadow: 0 12px 32px rgba(0,0,0,0.45); pointer-events: auto;
+    opacity: 0; transform: translateY(8px) scale(.98); transition: opacity .22s ease, transform .22s ease;
+  }
+  .toast.show { opacity: 1; transform: translateY(0) scale(1); }
+  .toast-icon {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .toast-icon svg { width: 14px; height: 14px; }
+  .toast.success .toast-icon { background: var(--tt-green-soft); color: var(--tt-green); }
+  .toast.error .toast-icon { background: var(--tt-red-soft); color: var(--tt-red); }
+  .toast-body { flex: 1; min-width: 0; }
+  .toast-title { font-size: 13px; font-weight: 700; color: var(--tt-text); }
+  .toast-detail { font-size: 12px; color: var(--tt-text-soft); margin-top: 2px; overflow-wrap: anywhere; }
+  .toast-close { background: none; border: none; color: var(--tt-text-soft); cursor: pointer; font-size: 16px; line-height: 1; padding: 0; flex-shrink: 0; }
+  .toast-close:hover { color: var(--tt-text); }
 </style>
 </head>
 <body>
@@ -630,15 +865,34 @@
       </div>
     </div>
     <div class="sph-pillbar">
-      <div class="sph-pill" id="pillHistory" onclick="sphGoToHistory()">Historique</div>
-      <div class="sph-pill sph-user" id="pillUser" title="Se déconnecter" onclick="logout()">
-        <span id="sphLoggedInUser"></span> · Se déconnecter
+      <div class="sph-navlink" id="pillHistory" onclick="sphGoToHistory()">Historique</div>
+      <div class="sph-avatar-wrap">
+        <div class="sph-avatar-btn" id="avatarBtn" onclick="toggleAccountMenu(event)">
+          <div class="sph-avatar-circle" id="avatarInitial">?</div>
+          <span class="sph-avatar-dot"></span>
+        </div>
+        <div class="sph-account-menu" id="accountMenu">
+          <div class="sph-account-item" id="accountMenuUsersItem" style="display:none;" onclick="onAccountMenuUsers()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.65)" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><circle cx="5" cy="7" r="2"/><circle cx="19" cy="7" r="2"/><path d="M2 20c0-3 2.5-4.5 5.5-4.5M22 20c0-3-2.5-4.5-5.5-4.5"/><path d="M6 20c0-3.5 3-5.5 6-5.5s6 2 6 5.5"/></svg>
+            <span>Utilisateurs</span>
+          </div>
+          <div class="sph-account-divider" id="accountMenuUsersDivider" style="display:none;"></div>
+          <div class="sph-account-item" onclick="onAccountMenuCompte()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.65)" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>
+            <span>Compte</span>
+          </div>
+          <div class="sph-account-divider"></div>
+          <div class="sph-account-item sph-account-logout" onclick="onAccountMenuLogout()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f38080" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            <span>Se déconnecter</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- kept off-screen, not removed -- login()/logout() write to these; the
-       visible user label lives in the pillbar's #sphLoggedInUser instead,
+       visible identity now lives on the avatar's initial letter instead,
        now that the sidebar (which used to show these directly) is gone. -->
   <span id="loggedInUser" style="position:absolute; left:-9999px;"></span>
   <span id="loggedInRole" style="position:absolute; left:-9999px;"></span>
@@ -794,6 +1048,7 @@
                 <button class="status-btn validate" onclick="setValidationStatus('result','human_validated')">Valider</button>
                 <button class="status-btn correct" onclick="toggleCorrectionBox('result')">Corriger</button>
                 <button class="status-btn reject" onclick="setValidationStatus('result','rejected')">Rejeter</button>
+                <button class="status-btn email" id="resultEmailBtn" style="display:none;" onclick="openEmailComposeModal('result')">Envoyer par email</button>
               </div>
             </div>
             <div class="superseded-banner" id="resultSupersededBanner">
@@ -918,6 +1173,7 @@
               <button class="status-btn validate" onclick="setValidationStatus('detail','human_validated')">Valider</button>
               <button class="status-btn correct" onclick="toggleCorrectionBox('detail')">Corriger</button>
               <button class="status-btn reject" onclick="setValidationStatus('detail','rejected')">Rejeter</button>
+              <button class="status-btn email" id="detailEmailBtn" style="display:none;" onclick="openEmailComposeModal('detail')">Envoyer par email</button>
             </div>
           </div>
           <div class="superseded-banner" id="supersededBanner">
@@ -936,9 +1192,225 @@
           <div id="relatedHistoryList" class="empty-text">Chargement...</div>
         </div>
       </div>
+
+      <div id="profileView" style="display:none;">
+        <div class="profile-header">
+          <div class="profile-avatar" id="profileAvatar">--</div>
+          <div>
+            <div class="profile-name" id="profileName">--</div>
+            <span class="profile-role" id="profileRole">--</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Compte email lié</h3>
+          <div id="emailLinkStatus">Chargement...</div>
+        </div>
+
+        <div class="card">
+          <h3>Sécurité</h3>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Mot de passe actuel</label>
+            <input type="password" id="pwCurrent" placeholder="••••••••">
+          </div>
+          <div class="field-row2">
+            <div class="field">
+              <label>Nouveau mot de passe</label>
+              <input type="password" id="pwNew" placeholder="••••••••">
+            </div>
+            <div class="field">
+              <label>Confirmer</label>
+              <input type="password" id="pwConfirm" placeholder="••••••••">
+            </div>
+          </div>
+          <div class="form-actions" style="margin-top:14px;">
+            <button onclick="submitPasswordChange()">Mettre à jour le mot de passe</button>
+            <span id="pwFeedback"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Préférences</h3>
+          <div class="pref-row">
+            <div class="pref-text">
+              <b>Réduire les animations</b>
+              <span>Désactive la rotation de la sphère, le champ d'étoiles et le défilement des tickets récents.</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="prefReduceMotion" onchange="onReduceMotionChange(this.checked)">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+          <div class="pref-row">
+            <div class="pref-text">
+              <b>Vue d'accueil par défaut</b>
+              <span>Ce que vous voyez juste après connexion.</span>
+            </div>
+            <div class="segmented" id="prefLandingSegmented">
+              <button data-value="sphere" onclick="setDefaultLandingPref('sphere')">Sphère</button>
+              <button data-value="history" onclick="setDefaultLandingPref('history')">Historique</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Mon activité</h3>
+          <div id="activityList" class="empty-text">Chargement...</div>
+        </div>
+      </div>
+
+      <div id="usersView" style="display:none;">
+        <div class="page-head-row">
+          <div>
+            <div class="page-desc" id="usersCountDesc"></div>
+          </div>
+          <button onclick="openCreateUserModal()">+ Créer un compte</button>
+        </div>
+        <div class="card">
+          <div id="usersTable"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
+
+<div class="modal-overlay" id="emailComposeOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="emailComposeTitle">Envoyer par email</h3>
+      <button class="modal-close" onclick="closeEmailComposeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-hint" id="emailComposeFromLine"></div>
+      <div class="field">
+        <label>Destinataire</label>
+        <input type="email" id="emailComposeTo" placeholder="destinataire@exemple.com">
+      </div>
+      <div class="field">
+        <label>Objet</label>
+        <input type="text" id="emailComposeSubject">
+      </div>
+      <div class="field">
+        <label>Message (pré-rempli depuis l'investigation, modifiable)</label>
+        <textarea id="emailComposeBody" style="min-height:220px;"></textarea>
+      </div>
+      <div class="field-hint">L'envoi est journalisé dans l'audit trail (destinataire, expéditeur, horodatage, dossier).</div>
+      <div id="emailComposeFeedback"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeEmailComposeModal()">Annuler</button>
+      <button onclick="submitEmailSend()" id="emailComposeSendBtn">Envoyer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="createUserOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Créer un compte</h3>
+      <button class="modal-close" onclick="closeCreateUserModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Nom d'utilisateur</label>
+        <input type="text" id="createUserUsername" placeholder="ex. m.trabelsi">
+      </div>
+      <div class="field">
+        <label>Rôle</label>
+        <select id="createUserRole">
+          <option value="SUPPORT_AGENT">Support Agent</option>
+          <option value="SECURITY_ANALYST">Security Analyst</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Mot de passe initial</label>
+        <div class="pw-row">
+          <input type="text" class="mono" id="createUserPassword" readonly>
+          <button class="btn-outline" onclick="regenerateCreateUserPassword()" type="button">Générer</button>
+        </div>
+        <div class="field-hint">L'agent devra changer ce mot de passe à sa première connexion.</div>
+      </div>
+      <div id="createUserFeedback"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeCreateUserModal()">Annuler</button>
+      <button onclick="submitCreateUser()" id="createUserSubmitBtn">Créer le compte</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="roleChangeOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="roleChangeTitle">Modifier le rôle</h3>
+      <button class="modal-close" onclick="closeRoleChangeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Rôle</label>
+        <select id="roleChangeSelect">
+          <option value="SUPPORT_AGENT">Support Agent</option>
+          <option value="SECURITY_ANALYST">Security Analyst</option>
+        </select>
+      </div>
+      <div id="roleChangeFeedback"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeRoleChangeModal()">Annuler</button>
+      <button onclick="submitRoleChange()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="userConfirmOverlay">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-body" style="padding-top:24px;">
+      <div id="userConfirmIcon" class="confirm-icon"></div>
+      <div style="font-weight:700; font-size:15px;" id="userConfirmTitle"></div>
+      <div class="field-hint" id="userConfirmBody"></div>
+      <div id="userConfirmFeedback"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeUserConfirmModal()">Annuler</button>
+      <button id="userConfirmBtn" onclick="runUserConfirmedAction()"></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="resetResultOverlay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head">
+      <h3>Mot de passe réinitialisé</h3>
+      <button class="modal-close" onclick="closeResetResultModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label id="resetResultLabel"></label>
+        <div class="pw-row">
+          <input type="text" class="mono" id="resetResultPassword" readonly>
+        </div>
+        <div class="field-hint">Communiquez ce mot de passe à l'agent en toute sécurité -- il ne sera plus affiché après fermeture.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeResetResultModal()">Terminé</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="userActivityOverlay">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <h3 id="userActivityTitle">Activité</h3>
+      <button class="modal-close" onclick="closeUserActivityModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="userActivityList" class="activity-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
 
 <script>
 const COLUMN_LABELS = {
@@ -1074,15 +1546,20 @@ async function login() {
     document.getElementById('appShell').classList.add('visible');
     document.getElementById('loggedInUser').textContent = authUsername;
     document.getElementById('loggedInRole').textContent = authRole;
-    document.getElementById('sphLoggedInUser').textContent = authUsername;
+    document.getElementById('avatarInitial').textContent = authUsername.charAt(0).toUpperCase();
+    const isAnalyst = authRole === 'SECURITY_ANALYST';
+    document.getElementById('accountMenuUsersItem').style.display = isAnalyst ? '' : 'none';
+    document.getElementById('accountMenuUsersDivider').style.display = isAnalyst ? '' : 'none';
     statusEl.textContent = '';
     navStack = [];
-    currentView = { type: 'new' };
+    const defaultLanding = localStorage.getItem('tt_default_landing') === 'history' ? 'history' : 'new';
+    currentView = { type: defaultLanding };
     renderCurrentView();
 
     document.getElementById('sphCanvas').style.display = 'block';
     document.getElementById('sphOverlay').style.display = 'block';
     document.body.classList.remove('sph-app-mode');
+    if (defaultLanding === 'history') document.body.classList.add('sph-app-mode');
     if (typeof sphStart === 'function') sphStart();
   } catch (err) {
     statusEl.innerHTML = '<span id="loginError">Erreur de connexion au serveur: ' + err.message + '</span>';
@@ -1125,6 +1602,8 @@ const VIEW_TITLES = {
   new: ['Investigation', "Assistant IA — Réclamations Tunisie Telecom"],
   history: ['Historique', 'Toutes les investigations passées'],
   detail: ["Dossier d'investigation", 'Résultat complet et historique du numéro'],
+  profile: ['Profil', 'Paramètres de votre compte'],
+  users: ['Utilisateurs', 'Gestion des comptes -- réservé au rôle Security Analyst'],
 };
 
 let navStack = [];
@@ -1134,6 +1613,8 @@ function renderCurrentView() {
   document.getElementById('newInvestigationView').style.display = currentView.type === 'new' ? 'block' : 'none';
   document.getElementById('historyView').style.display = currentView.type === 'history' ? 'block' : 'none';
   document.getElementById('ticketDetailView').style.display = currentView.type === 'detail' ? 'block' : 'none';
+  document.getElementById('profileView').style.display = currentView.type === 'profile' ? 'block' : 'none';
+  document.getElementById('usersView').style.display = currentView.type === 'users' ? 'block' : 'none';
   document.getElementById('pillHistory').classList.toggle('sph-primary', currentView.type === 'history');
 
   const [title, sub] = VIEW_TITLES[currentView.type];
@@ -1142,7 +1623,7 @@ function renderCurrentView() {
 
   document.getElementById('globalBackBtn').style.visibility = navStack.length > 0 ? 'visible' : 'hidden';
 
-  const VIEW_CONTAINER_ID = { new: 'newInvestigationView', history: 'historyView', detail: 'ticketDetailView' };
+  const VIEW_CONTAINER_ID = { new: 'newInvestigationView', history: 'historyView', detail: 'ticketDetailView', profile: 'profileView', users: 'usersView' };
   if (typeof sphAnimateEntrance === 'function') sphAnimateEntrance('#' + VIEW_CONTAINER_ID[currentView.type]);
 
   if (currentView.type === 'new') {
@@ -1152,10 +1633,23 @@ function renderCurrentView() {
     loadHistory();
   } else if (currentView.type === 'detail') {
     populateTicketDetail(currentView.id);
+  } else if (currentView.type === 'profile') {
+    loadProfile();
+  } else if (currentView.type === 'users') {
+    loadUsers();
   }
 }
 
 function goTo(view) {
+  // Both dropdowns are position:absolute/fixed overlays anchored to the
+  // topbar -- left open, they visually sit on top of whatever the new
+  // view renders underneath them (first noticed on the Utilisateurs
+  // page's "+ Créer un compte" button).
+  const notifPanel = document.getElementById('notifPanel');
+  if (notifPanel) notifPanel.classList.remove('open');
+  const accountMenu = document.getElementById('accountMenu');
+  if (accountMenu) accountMenu.classList.remove('open');
+
   navStack.push(currentView);
   currentView = view;
   renderCurrentView();
@@ -1166,6 +1660,878 @@ function goBack() {
   renderCurrentView();
 }
 function showView(type) { goTo({ type }); }
+
+// ---- Account avatar dropdown (topbar) ----
+
+function toggleAccountMenu(event) {
+  event.stopPropagation();
+  document.getElementById('accountMenu').classList.toggle('open');
+}
+function closeAccountMenu() {
+  document.getElementById('accountMenu').classList.remove('open');
+}
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('accountMenu');
+  const btn = document.getElementById('avatarBtn');
+  if (menu && menu.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) {
+    closeAccountMenu();
+  }
+});
+function onAccountMenuCompte() {
+  closeAccountMenu();
+  if (typeof sphGoToProfile === 'function') sphGoToProfile();
+}
+function onAccountMenuUsers() {
+  closeAccountMenu();
+  document.body.classList.add('sph-app-mode');
+  goTo({ type: 'users' });
+}
+function onAccountMenuLogout() {
+  closeAccountMenu();
+  logout();
+}
+
+// ---- Toast notifications ----
+
+const TOAST_ICON_SVG = {
+  success: '<path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>',
+  error: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01" stroke-linecap="round"/>',
+};
+
+function showToast(title, detail, type = 'success', duration = 5000) {
+  const stack = document.getElementById('toastStack');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = `
+    <div class="toast-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${TOAST_ICON_SVG[type] || TOAST_ICON_SVG.success}</svg></div>
+    <div class="toast-body">
+      <div class="toast-title">${title}</div>
+      ${detail ? `<div class="toast-detail">${detail}</div>` : ''}
+    </div>
+    <button class="toast-close" onclick="this.closest('.toast').remove()">&times;</button>
+  `;
+  stack.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }, duration);
+}
+
+// ---- Email compose modal (ticket detail / result view) ----
+
+let emailComposeScope = null;
+
+function composeEmailBody(data) {
+  const confLabel = data.match_confidence ? (CONFIDENCE_LABELS[data.match_confidence] || data.match_confidence) : '--';
+  return `Dossier #${data.logId}
+Catégorie : ${data.category || '--'}
+Numéro client : ${data.msisdn || '--'}
+Statut : Validé
+
+Explication :
+${data.explanation || ''}
+
+Confiance : ${confLabel}
+
+--
+Envoyé depuis la plateforme d'investigation IA par ${authUsername}.`;
+}
+
+async function openEmailComposeModal(scope) {
+  const data = emailComposeData[scope];
+  if (!data) {
+    alert('Données du dossier introuvables.');
+    return;
+  }
+
+  let linked;
+  try {
+    const response = await fetch('/profile/email-link', { headers: { 'Authorization': 'Bearer ' + authToken } });
+    linked = response.ok ? await response.json() : { linked: false };
+  } catch (err) {
+    linked = { linked: false };
+  }
+
+  if (!linked.linked) {
+    alert('Aucun compte email lié. Ouvrez Profil pour en lier un avant d\'envoyer un dossier.');
+    return;
+  }
+
+  emailComposeScope = scope;
+  document.getElementById('emailComposeTitle').textContent = 'Envoyer le dossier #' + data.logId + ' par email';
+  document.getElementById('emailComposeFromLine').textContent = 'Expéditeur : ' + linked.email;
+  document.getElementById('emailComposeTo').value = '';
+  document.getElementById('emailComposeSubject').value = `Dossier #${data.logId} -- ${data.category || ''} -- validé`;
+  document.getElementById('emailComposeBody').value = composeEmailBody(data);
+  document.getElementById('emailComposeFeedback').textContent = '';
+  document.getElementById('emailComposeOverlay').classList.add('open');
+}
+
+function closeEmailComposeModal() {
+  document.getElementById('emailComposeOverlay').classList.remove('open');
+}
+
+async function submitEmailSend() {
+  const data = emailComposeData[emailComposeScope];
+  const recipient = document.getElementById('emailComposeTo').value.trim();
+  const subject = document.getElementById('emailComposeSubject').value.trim();
+  const body = document.getElementById('emailComposeBody').value;
+  const feedback = document.getElementById('emailComposeFeedback');
+  const sendBtn = document.getElementById('emailComposeSendBtn');
+
+  if (!recipient) {
+    feedback.className = 'form-error';
+    feedback.textContent = 'Adresse du destinataire requise.';
+    return;
+  }
+
+  sendBtn.disabled = true;
+  feedback.className = '';
+  feedback.textContent = 'Envoi en cours...';
+
+  try {
+    const response = await fetch('/investigations/' + data.logId + '/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ recipient, subject, body })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      feedback.className = 'form-error';
+      feedback.textContent = result.detail || 'Échec de l\'envoi.';
+      sendBtn.disabled = false;
+      return;
+    }
+    closeEmailComposeModal();
+    showToast('Email envoyé', 'Destinataire : ' + result.recipient, 'success');
+  } catch (err) {
+    feedback.className = 'form-error';
+    feedback.textContent = 'Erreur de connexion au serveur.';
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+// ---- Users (admin, SECURITY_ANALYST only) ----
+
+let usersData = [];
+let openUserMenuIndex = null;
+let userConfirmContext = null; // { type: 'deactivate'|'reset', username }
+let roleChangeUsername = null;
+const USER_PASSWORD_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+
+function samplePassword(length = 12) {
+  let out = '';
+  for (let i = 0; i < length; i++) out += USER_PASSWORD_ALPHABET[Math.floor(Math.random() * USER_PASSWORD_ALPHABET.length)];
+  return out;
+}
+
+async function loadUsers() {
+  const table = document.getElementById('usersTable');
+  document.getElementById('usersCountDesc').textContent = 'Chargement...';
+  try {
+    const response = await fetch('/admin/users', { headers: { 'Authorization': 'Bearer ' + authToken } });
+    if (response.status === 403) {
+      document.getElementById('usersCountDesc').textContent = '';
+      table.innerHTML = usersAccessDeniedHtml();
+      return;
+    }
+    if (!response.ok) {
+      table.innerHTML = '<div class="form-error">Erreur lors du chargement.</div>';
+      return;
+    }
+    const data = await response.json();
+    usersData = data.users || [];
+    openUserMenuIndex = null;
+    document.getElementById('usersCountDesc').textContent =
+      usersData.length + (usersData.length > 1 ? ' comptes' : ' compte') + '. Réservé au rôle Security Analyst.';
+    renderUsersTable();
+  } catch (err) {
+    table.innerHTML = '<div class="form-error">Erreur de connexion au serveur.</div>';
+  }
+}
+
+function usersAccessDeniedHtml() {
+  return `
+    <div class="access-denied-card">
+      <div class="confirm-icon warn" style="margin:0 auto 16px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      </div>
+      <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Accès refusé</div>
+      <div class="field-hint">Cette page est réservée au rôle Security Analyst.</div>
+    </div>`;
+}
+
+function roleLabelFr(role) { return role === 'SECURITY_ANALYST' ? 'Security Analyst' : 'Support Agent'; }
+
+function userRowHtml(u, i) {
+  const roleClass = u.role === 'SECURITY_ANALYST' ? 'role-analyst' : 'role-support';
+  const isSelf = u.username === authUsername;
+  const createdStr = u.created_at ? u.created_at.slice(0, 10).split('-').reverse().join('/') : '--';
+
+  const lockCell = u.locked
+    ? `<span class="lock-badge">
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+         Verrouillé
+       </span>
+       <div class="urow-lock-reason">${u.lock_reason || ''}</div>`
+    : '<span class="no-lock">--</span>';
+
+  const unlockItem = u.locked ? `
+    <div class="row-menu-item" onclick="unlockUserRow('${u.username}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.5-2"/></svg>
+      Déverrouiller
+    </div>` : '';
+
+  const toggleActiveItem = isSelf
+    ? `<div class="row-menu-item disabled" title="Vous ne pouvez pas désactiver votre propre compte">
+         <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6" stroke-linecap="round"/></svg>
+         Désactiver (votre compte)
+       </div>`
+    : `<div class="row-menu-item danger" onclick="onToggleActiveClick('${u.username}', ${u.active})">
+         <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6" stroke-linecap="round"/></svg>
+         ${u.active ? 'Désactiver le compte' : 'Activer le compte'}
+       </div>`;
+
+  const menuHtml = openUserMenuIndex === i ? `
+    <div class="row-menu">
+      <div class="row-menu-item" onclick="openUserActivityModal('${u.username}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Voir l'activité
+      </div>
+      <div class="row-menu-divider"></div>
+      <div class="row-menu-item" onclick="openRoleChangeModal('${u.username}', '${u.role}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>
+        Modifier le rôle
+      </div>
+      <div class="row-menu-item" onclick="openResetPasswordConfirm('${u.username}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Réinitialiser le mot de passe
+      </div>
+      ${unlockItem}
+      <div class="row-menu-divider"></div>
+      ${toggleActiveItem}
+    </div>` : '';
+
+  return `
+    <tr>
+      <td>
+        <div class="urow-user">
+          <div class="urow-avatar ${roleClass}">${u.username.charAt(0).toUpperCase()}</div>
+          <div>
+            <div class="mono" style="font-weight:600; font-size:13.5px;">${u.username}</div>
+            <div class="urow-created">Créé le ${createdStr}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="role-badge" style="background:${u.role === 'SECURITY_ANALYST' ? 'var(--tt-blue-soft)' : 'var(--tt-teal-soft)'}; color:${u.role === 'SECURITY_ANALYST' ? '#8FC4E6' : '#7FE3CF'}; padding:4px 10px; border-radius:7px; font-size:11.5px; font-weight:600;">${roleLabelFr(u.role)}</span></td>
+      <td><span class="status-pill ${u.active ? 'active' : 'inactive'}"><span class="dot"></span>${u.active ? 'Actif' : 'Désactivé'}</span></td>
+      <td>${lockCell}</td>
+      <td class="row-actions">
+        <button class="row-actions-btn" onclick="toggleUserRowMenu(${i}, event)">&#9881;</button>
+        ${menuHtml}
+      </td>
+    </tr>`;
+}
+
+function renderUsersTable() {
+  const table = document.getElementById('usersTable');
+  table.innerHTML = `
+    <div class="utable-wrapper">
+      <table class="utable">
+        <colgroup>
+          <col><col style="width:16%;"><col style="width:13%;"><col style="width:24%;"><col style="width:56px;">
+        </colgroup>
+        <thead><tr><th>Utilisateur</th><th>Rôle</th><th>Statut</th><th>Verrouillage</th><th></th></tr></thead>
+        <tbody>${usersData.map(userRowHtml).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+function toggleUserRowMenu(i, event) {
+  openUserMenuIndex = openUserMenuIndex === i ? null : i;
+  renderUsersTable();
+}
+
+document.addEventListener('click', function(e) {
+  if (openUserMenuIndex === null) return;
+  if (e.target.closest('.row-menu') || e.target.closest('.row-actions-btn')) return;
+  openUserMenuIndex = null;
+  renderUsersTable();
+});
+
+// ---- Create account ----
+function openCreateUserModal() {
+  document.getElementById('createUserUsername').value = '';
+  document.getElementById('createUserRole').value = 'SUPPORT_AGENT';
+  document.getElementById('createUserPassword').value = samplePassword();
+  document.getElementById('createUserFeedback').textContent = '';
+  document.getElementById('createUserOverlay').classList.add('open');
+}
+function closeCreateUserModal() {
+  document.getElementById('createUserOverlay').classList.remove('open');
+}
+function regenerateCreateUserPassword() {
+  document.getElementById('createUserPassword').value = samplePassword();
+}
+async function submitCreateUser() {
+  const username = document.getElementById('createUserUsername').value.trim();
+  const role = document.getElementById('createUserRole').value;
+  const password = document.getElementById('createUserPassword').value;
+  const feedback = document.getElementById('createUserFeedback');
+
+  if (!username) {
+    feedback.className = 'form-error';
+    feedback.textContent = "Nom d'utilisateur requis.";
+    return;
+  }
+
+  try {
+    const response = await fetch('/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ username, role, password })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      feedback.className = 'form-error';
+      feedback.textContent = data.detail || 'Échec de la création.';
+      return;
+    }
+    closeCreateUserModal();
+    showToast('Compte créé', username, 'success');
+    loadUsers();
+  } catch (err) {
+    feedback.className = 'form-error';
+    feedback.textContent = 'Erreur de connexion au serveur.';
+  }
+}
+
+// ---- Role change ----
+function openRoleChangeModal(username, currentRole) {
+  openUserMenuIndex = null;
+  renderUsersTable();
+  roleChangeUsername = username;
+  document.getElementById('roleChangeTitle').textContent = 'Modifier le rôle -- ' + username;
+  document.getElementById('roleChangeSelect').value = currentRole;
+  document.getElementById('roleChangeFeedback').textContent = '';
+  document.getElementById('roleChangeOverlay').classList.add('open');
+}
+function closeRoleChangeModal() {
+  document.getElementById('roleChangeOverlay').classList.remove('open');
+}
+async function submitRoleChange() {
+  const role = document.getElementById('roleChangeSelect').value;
+  const feedback = document.getElementById('roleChangeFeedback');
+  try {
+    const response = await fetch('/admin/users/' + encodeURIComponent(roleChangeUsername), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ role })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      feedback.className = 'form-error';
+      feedback.textContent = data.detail || 'Échec de la mise à jour.';
+      return;
+    }
+    closeRoleChangeModal();
+    showToast('Rôle mis à jour', roleChangeUsername + ' -- ' + roleLabelFr(role), 'success');
+    loadUsers();
+  } catch (err) {
+    feedback.className = 'form-error';
+    feedback.textContent = 'Erreur de connexion au serveur.';
+  }
+}
+
+// ---- Generic confirm (deactivate / reset password) ----
+function openUserConfirmModal(ctx) {
+  userConfirmContext = ctx;
+  const icon = document.getElementById('userConfirmIcon');
+  icon.className = 'confirm-icon ' + (ctx.danger ? 'warn' : 'neutral');
+  icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01" stroke-linecap="round"/></svg>';
+  document.getElementById('userConfirmTitle').textContent = ctx.title;
+  document.getElementById('userConfirmBody').textContent = ctx.body;
+  document.getElementById('userConfirmFeedback').textContent = '';
+  const btn = document.getElementById('userConfirmBtn');
+  btn.textContent = ctx.actionLabel;
+  btn.className = ctx.danger ? 'btn-danger' : '';
+  document.getElementById('userConfirmOverlay').classList.add('open');
+}
+function closeUserConfirmModal() {
+  document.getElementById('userConfirmOverlay').classList.remove('open');
+  userConfirmContext = null;
+}
+function onToggleActiveClick(username, currentlyActive) {
+  openUserMenuIndex = null;
+  renderUsersTable();
+  if (!currentlyActive) {
+    // Reactivating is non-destructive -- apply directly, no confirm needed.
+    patchUserActive(username, true);
+    return;
+  }
+  openUserConfirmModal({
+    type: 'deactivate', username, danger: true,
+    title: 'Désactiver le compte de ' + username + ' ?',
+    body: "Le compte ne pourra plus se connecter tant qu'il n'est pas réactivé. Cette action est journalisée.",
+    actionLabel: 'Désactiver',
+  });
+}
+function openResetPasswordConfirm(username) {
+  openUserMenuIndex = null;
+  renderUsersTable();
+  openUserConfirmModal({
+    type: 'reset', username, danger: false,
+    title: 'Réinitialiser le mot de passe ?',
+    body: 'Un nouveau mot de passe temporaire sera généré pour ' + username + ". L'ancien cessera de fonctionner immédiatement.",
+    actionLabel: 'Réinitialiser',
+  });
+}
+async function patchUserActive(username, active) {
+  try {
+    const response = await fetch('/admin/users/' + encodeURIComponent(username), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ active })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showToast('Échec', data.detail || 'Action refusée.', 'error');
+      return;
+    }
+    showToast(active ? 'Compte activé' : 'Compte désactivé', username, 'success');
+    loadUsers();
+  } catch (err) {
+    showToast('Erreur', 'Connexion au serveur impossible.', 'error');
+  }
+}
+async function unlockUserRow(username) {
+  openUserMenuIndex = null;
+  renderUsersTable();
+  try {
+    const response = await fetch('/admin/users/' + encodeURIComponent(username) + '/unlock', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showToast('Échec', data.detail || 'Action refusée.', 'error');
+      return;
+    }
+    showToast('Compte déverrouillé', username, 'success');
+    loadUsers();
+  } catch (err) {
+    showToast('Erreur', 'Connexion au serveur impossible.', 'error');
+  }
+}
+async function runUserConfirmedAction() {
+  if (!userConfirmContext) return;
+  const { type, username } = userConfirmContext;
+  const feedback = document.getElementById('userConfirmFeedback');
+
+  if (type === 'deactivate') {
+    try {
+      const response = await fetch('/admin/users/' + encodeURIComponent(username), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+        body: JSON.stringify({ active: false })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        feedback.className = 'form-error';
+        feedback.textContent = data.detail || 'Échec de la désactivation.';
+        return;
+      }
+      closeUserConfirmModal();
+      showToast('Compte désactivé', username, 'success');
+      loadUsers();
+    } catch (err) {
+      feedback.className = 'form-error';
+      feedback.textContent = 'Erreur de connexion au serveur.';
+    }
+  } else if (type === 'reset') {
+    try {
+      const response = await fetch('/admin/users/' + encodeURIComponent(username) + '/reset-password', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + authToken }
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        feedback.className = 'form-error';
+        feedback.textContent = data.detail || 'Échec de la réinitialisation.';
+        return;
+      }
+      closeUserConfirmModal();
+      document.getElementById('resetResultLabel').textContent = 'Nouveau mot de passe -- ' + username;
+      document.getElementById('resetResultPassword').value = data.password;
+      document.getElementById('resetResultOverlay').classList.add('open');
+      loadUsers();
+    } catch (err) {
+      feedback.className = 'form-error';
+      feedback.textContent = 'Erreur de connexion au serveur.';
+    }
+  }
+}
+function closeResetResultModal() {
+  document.getElementById('resetResultOverlay').classList.remove('open');
+  document.getElementById('resetResultPassword').value = '';
+}
+
+// ---- Activity view ----
+function userActivityItemHtml(item) {
+  const label = ACTIVITY_LABELS[item.event_type] || item.event_type;
+  const iconClass = ACTIVITY_ICONS[item.event_type] || 'other';
+  const svg = ACTIVITY_ICON_SVG[iconClass] || ACTIVITY_ICON_SVG.other;
+  const when = item.created_at ? item.created_at.slice(0, 16).replace('T', ' ') : '';
+  return `
+    <div class="activity-item">
+      <div class="activity-icon ${iconClass}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${svg}</svg></div>
+      <div class="activity-body">
+        <div class="activity-title">${label}</div>
+        <div class="activity-detail">${item.details || ''}</div>
+      </div>
+      <div class="activity-time">${when}</div>
+    </div>`;
+}
+async function openUserActivityModal(username) {
+  openUserMenuIndex = null;
+  renderUsersTable();
+  document.getElementById('userActivityTitle').textContent = 'Activité -- ' + username;
+  const list = document.getElementById('userActivityList');
+  list.innerHTML = '<div class="empty-text">Chargement...</div>';
+  document.getElementById('userActivityOverlay').classList.add('open');
+  try {
+    const response = await fetch('/admin/users/' + encodeURIComponent(username) + '/activity', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    if (!response.ok) {
+      list.innerHTML = '<div class="form-error">Erreur lors du chargement.</div>';
+      return;
+    }
+    const data = await response.json();
+    const activity = data.activity || [];
+    list.innerHTML = activity.length
+      ? activity.map(userActivityItemHtml).join('')
+      : '<div class="empty-text">Aucune activité pour le moment.</div>';
+  } catch (err) {
+    list.innerHTML = '<div class="form-error">Erreur de connexion au serveur.</div>';
+  }
+}
+function closeUserActivityModal() {
+  document.getElementById('userActivityOverlay').classList.remove('open');
+}
+
+// ---- Profile / settings view ----
+
+const ACTIVITY_LABELS = {
+  LOGIN_SUCCESS: 'Connexion réussie',
+  LOGIN_FAILURE: 'Échec de connexion',
+  INVESTIGATE: 'Investigation lancée',
+  TICKET_VALIDATION_UPDATE: 'Statut du dossier modifié',
+  VERIFY_CASE_STATUS_UPDATE: 'Statut du dossier modifié',
+  EMAIL_ACCOUNT_LINKED: 'Compte email lié',
+  EMAIL_SENT: 'Dossier envoyé par email',
+  PASSWORD_CHANGED: 'Mot de passe modifié',
+  SECURITY_ALERT: 'Alerte de sécurité (Gateway)',
+  SECURITY_LOCKOUT: 'Compte verrouillé (Gateway)',
+  LOGIN_LOCKOUT: 'Compte verrouillé (connexions échouées)',
+  USER_CREATED: 'Compte créé',
+  USER_ROLE_CHANGED: 'Rôle modifié',
+  USER_ACTIVATED: 'Compte activé',
+  USER_DEACTIVATED: 'Compte désactivé',
+  USER_UNLOCKED: 'Compte déverrouillé',
+  USER_PASSWORD_RESET: 'Mot de passe réinitialisé (admin)',
+};
+const ACTIVITY_ICONS = {
+  LOGIN_SUCCESS: 'login',
+  LOGIN_FAILURE: 'alert',
+  INVESTIGATE: 'investigate',
+  TICKET_VALIDATION_UPDATE: 'validate',
+  VERIFY_CASE_STATUS_UPDATE: 'validate',
+  EMAIL_ACCOUNT_LINKED: 'email',
+  EMAIL_SENT: 'email',
+  PASSWORD_CHANGED: 'other',
+  SECURITY_ALERT: 'alert',
+  SECURITY_LOCKOUT: 'alert',
+  LOGIN_LOCKOUT: 'alert',
+  USER_CREATED: 'validate',
+  USER_ROLE_CHANGED: 'other',
+  USER_ACTIVATED: 'validate',
+  USER_DEACTIVATED: 'alert',
+  USER_UNLOCKED: 'validate',
+  USER_PASSWORD_RESET: 'other',
+};
+const ACTIVITY_ICON_SVG = {
+  login: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" stroke-linecap="round" stroke-linejoin="round"/>',
+  investigate: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/>',
+  validate: '<path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>',
+  email: '<path d="M4 4h16v16H4z" stroke-linejoin="round"/><path d="M4 6l8 7 8-7" stroke-linejoin="round"/>',
+  other: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3" stroke-linecap="round"/>',
+  alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01" stroke-linecap="round"/>',
+};
+
+function loadProfile() {
+  document.getElementById('profileAvatar').textContent = (authUsername || '--').slice(0, 2).toUpperCase();
+  document.getElementById('profileName').textContent = authUsername || '--';
+  document.getElementById('profileRole').textContent = authRole === 'SECURITY_ANALYST' ? 'Security Analyst' : 'Support Agent';
+
+  loadEmailLinkStatus();
+  loadActivity();
+
+  const reduceMotion = localStorage.getItem('tt_reduce_motion') === '1';
+  document.getElementById('prefReduceMotion').checked = reduceMotion;
+
+  const landing = localStorage.getItem('tt_default_landing') || 'sphere';
+  document.querySelectorAll('#prefLandingSegmented button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === landing);
+  });
+
+  document.getElementById('pwCurrent').value = '';
+  document.getElementById('pwNew').value = '';
+  document.getElementById('pwConfirm').value = '';
+  document.getElementById('pwFeedback').textContent = '';
+}
+
+function onReduceMotionChange(checked) {
+  localStorage.setItem('tt_reduce_motion', checked ? '1' : '0');
+  if (typeof window.sphSetReduceMotion === 'function') window.sphSetReduceMotion(checked);
+}
+
+function setDefaultLandingPref(value) {
+  localStorage.setItem('tt_default_landing', value);
+  document.querySelectorAll('#prefLandingSegmented button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === value);
+  });
+}
+
+async function submitPasswordChange() {
+  const current = document.getElementById('pwCurrent').value;
+  const next = document.getElementById('pwNew').value;
+  const confirm = document.getElementById('pwConfirm').value;
+  const feedback = document.getElementById('pwFeedback');
+
+  if (!current || !next) {
+    feedback.className = 'form-error';
+    feedback.textContent = 'Renseignez le mot de passe actuel et le nouveau.';
+    return;
+  }
+  if (next !== confirm) {
+    feedback.className = 'form-error';
+    feedback.textContent = 'Les deux nouveaux mots de passe ne correspondent pas.';
+    return;
+  }
+
+  feedback.className = '';
+  feedback.textContent = 'Mise à jour...';
+
+  try {
+    const response = await fetch('/profile/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ current_password: current, new_password: next })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      feedback.className = 'form-error';
+      feedback.textContent = data.detail || 'Échec de la mise à jour.';
+      return;
+    }
+    feedback.className = 'form-ok';
+    feedback.textContent = 'Mot de passe mis à jour.';
+    document.getElementById('pwCurrent').value = '';
+    document.getElementById('pwNew').value = '';
+    document.getElementById('pwConfirm').value = '';
+  } catch (err) {
+    feedback.className = 'form-error';
+    feedback.textContent = 'Erreur de connexion au serveur.';
+  }
+}
+
+function emailLinkedCardHtml(linked) {
+  if (!linked) {
+    return `
+      <div class="field-hint" style="margin-bottom:14px;">Aucun compte lié -- les dossiers ne peuvent pas encore être envoyés par email.</div>
+      <div class="form-actions" style="margin-bottom:14px;">
+        <button class="btn-outline" onclick="toggleEmailLinkForm()">Lier un compte</button>
+      </div>
+      ${emailLinkFormHtml()}
+    `;
+  }
+  return `
+    <div class="link-row">
+      <div class="link-identity">
+        <div class="link-avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z" stroke-linejoin="round"/><path d="M4 6l8 7 8-7" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="link-email">${linked.email}</div>
+          <div class="link-meta">Connecté depuis le ${linked.linked_at ? linked.linked_at.slice(0,10).split('-').reverse().join('/') : '--'}</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="status-pill"><span class="dot"></span>Connecté</span>
+        <button class="btn-outline" onclick="toggleEmailLinkForm()">Modifier</button>
+      </div>
+    </div>
+    ${emailLinkFormHtml()}
+  `;
+}
+
+function emailLinkFormHtml() {
+  return `
+    <div class="link-form" id="emailLinkForm">
+      <div class="field">
+        <label>Adresse email</label>
+        <input type="email" id="emailLinkAddress" placeholder="votre.nom@exemple.com">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Mot de passe d'application</label>
+          <input type="password" id="emailLinkPassword" placeholder="mot de passe d'application">
+        </div>
+        <div class="field">
+          <label>Fournisseur</label>
+          <select id="emailLinkProvider" onchange="onEmailProviderChange()">
+            <option value="auto">Détection automatique</option>
+            <option value="manual">Autre (SMTP manuel)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row" id="emailManualSmtpRow" style="display:none;">
+        <div class="field">
+          <label>Serveur SMTP</label>
+          <input type="text" id="emailLinkSmtpHost" placeholder="smtp.exemple.com">
+        </div>
+        <div class="field">
+          <label>Port</label>
+          <input type="text" id="emailLinkSmtpPort" placeholder="587">
+        </div>
+      </div>
+      <div class="field-hint">Le mot de passe est un mot de passe d'application dédié, jamais votre mot de passe principal, et n'est jamais stocké en clair.</div>
+      <div class="form-actions">
+        <button onclick="submitEmailLink()">Tester et enregistrer</button>
+        <button class="btn-ghost" onclick="toggleEmailLinkForm()">Annuler</button>
+        <span id="emailLinkFeedback"></span>
+      </div>
+    </div>
+  `;
+}
+
+function onEmailProviderChange() {
+  const manual = document.getElementById('emailLinkProvider').value === 'manual';
+  document.getElementById('emailManualSmtpRow').style.display = manual ? 'grid' : 'none';
+}
+
+function toggleEmailLinkForm() {
+  const form = document.getElementById('emailLinkForm');
+  if (form) form.classList.toggle('open');
+}
+
+async function loadEmailLinkStatus() {
+  const wrap = document.getElementById('emailLinkStatus');
+  try {
+    const response = await fetch('/profile/email-link', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    if (!response.ok) {
+      wrap.innerHTML = emailLinkedCardHtml(null);
+      return;
+    }
+    const data = await response.json();
+    wrap.innerHTML = emailLinkedCardHtml(data.linked ? data : null);
+  } catch (err) {
+    wrap.innerHTML = '<div class="form-error">Erreur lors du chargement.</div>';
+  }
+}
+
+async function submitEmailLink() {
+  const email = document.getElementById('emailLinkAddress').value.trim();
+  const password = document.getElementById('emailLinkPassword').value;
+  const provider = document.getElementById('emailLinkProvider').value;
+  const feedback = document.getElementById('emailLinkFeedback');
+
+  if (!email || !password) {
+    feedback.className = 'form-error';
+    feedback.textContent = 'Adresse et mot de passe requis.';
+    return;
+  }
+
+  const body = { email, app_password: password };
+  if (provider === 'manual') {
+    body.smtp_host = document.getElementById('emailLinkSmtpHost').value.trim();
+    body.smtp_port = parseInt(document.getElementById('emailLinkSmtpPort').value, 10);
+    if (!body.smtp_host || !body.smtp_port) {
+      feedback.className = 'form-error';
+      feedback.textContent = 'Serveur et port SMTP requis pour un fournisseur manuel.';
+      return;
+    }
+  }
+
+  feedback.className = '';
+  feedback.textContent = 'Test de connexion...';
+
+  try {
+    const response = await fetch('/profile/email-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      feedback.className = 'form-error';
+      feedback.textContent = data.detail || 'Échec de la connexion SMTP.';
+      return;
+    }
+    loadEmailLinkStatus();
+  } catch (err) {
+    feedback.className = 'form-error';
+    feedback.textContent = 'Erreur de connexion au serveur.';
+  }
+}
+
+function activityItemHtml(item) {
+  const label = ACTIVITY_LABELS[item.event_type] || item.event_type;
+  const iconClass = ACTIVITY_ICONS[item.event_type] || 'other';
+  const svg = ACTIVITY_ICON_SVG[iconClass];
+  const when = item.created_at ? item.created_at.slice(0, 16).replace('T', ' ') : '';
+  return `
+    <div class="activity-item">
+      <div class="activity-icon ${iconClass}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${svg}</svg></div>
+      <div class="activity-body">
+        <div class="activity-title">${label}</div>
+        <div class="activity-detail">${item.details || ''}</div>
+      </div>
+      <div class="activity-time">${when}</div>
+    </div>
+  `;
+}
+
+async function loadActivity() {
+  const list = document.getElementById('activityList');
+  try {
+    const response = await fetch('/profile/activity', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    if (!response.ok) {
+      list.className = 'empty-text';
+      list.textContent = 'Erreur lors du chargement.';
+      return;
+    }
+    const data = await response.json();
+    const activity = data.activity || [];
+    if (activity.length === 0) {
+      list.className = 'empty-text';
+      list.textContent = 'Aucune activité pour le moment.';
+      return;
+    }
+    list.className = 'activity-list';
+    list.innerHTML = activity.map(activityItemHtml).join('');
+  } catch (err) {
+    list.className = 'empty-text';
+    list.textContent = 'Erreur lors du chargement.';
+  }
+}
 
 let historyDateFilterToday = false;
 function goToHistoryFilteredToday() {
@@ -1503,12 +2869,19 @@ function showTicketDetail(logId) {
 // scopes ('detail' and 'result') share the same functions via this id
 // lookup rather than duplicating the logic.
 const STATUS_IDS = {
-  detail: { badge: 'statusBadge', actions: 'statusActions', box: 'correctionBox', text: 'correctionText', banner: 'supersededBanner', bannerLink: 'supersededLink' },
-  result: { badge: 'resultStatusBadge', actions: 'resultStatusActions', box: 'resultCorrectionBox', text: 'resultCorrectionText', banner: 'resultSupersededBanner', bannerLink: 'resultSupersededLink' },
+  detail: { badge: 'statusBadge', actions: 'statusActions', box: 'correctionBox', text: 'correctionText', banner: 'supersededBanner', bannerLink: 'supersededLink', emailBtn: 'detailEmailBtn' },
+  result: { badge: 'resultStatusBadge', actions: 'resultStatusActions', box: 'resultCorrectionBox', text: 'resultCorrectionText', banner: 'resultSupersededBanner', bannerLink: 'resultSupersededLink', emailBtn: 'resultEmailBtn' },
 };
 const statusScopes = {
   detail: { logId: null, complaintText: null },
   result: { logId: null, complaintText: null },
+};
+// Data needed to pre-compose the email (category/msisdn/explanation/
+// confidence), cached per scope as each view populates -- avoids a
+// redundant fetch when the agent clicks "Envoyer par email".
+const emailComposeData = {
+  detail: null,
+  result: null,
 };
 const STATUS_LABEL = {
   ai_generated: 'Généré par IA', human_reviewed: 'Revu', human_validated: 'Validé',
@@ -1549,6 +2922,9 @@ function updateStatusActionsVisibility(scope, status) {
   // and re-running), Rejeter itself stays too (re-affirming isn't harmful).
   actions.querySelector('.status-btn.validate').style.display = (hideValidateReject || status === 'rejected') ? 'none' : '';
   actions.querySelector('.status-btn.reject').style.display = hideValidateReject ? 'none' : '';
+  // Sending only makes sense once the ticket is actually validated -- the
+  // opposite gating from validate/reject above.
+  document.getElementById(STATUS_IDS[scope].emailBtn).style.display = status === 'human_validated' ? '' : 'none';
 }
 
 async function setValidationStatus(scope, status) {
@@ -1711,6 +3087,14 @@ async function populateTicketDetail(logId) {
     }
 
     renderEvidenceInto(t.evidence, document.getElementById('detailEvidenceSummary'), document.getElementById('detailEvidenceBox'));
+
+    emailComposeData.detail = {
+      logId: logId,
+      category: t.category,
+      msisdn: t.msisdn,
+      explanation: t.explanation,
+      match_confidence: t.match_confidence,
+    };
 
     statusScopes.detail.complaintText = t.complaint_text || null;
     if (t.superseded_by_log_id) {
@@ -1888,6 +3272,17 @@ async function submitComplaint() {
       document.getElementById('pipelineCard').style.display = 'none';
       return;
     }
+    if (!response.ok) {
+      // Covers 503 (Ollama unreachable -- see app/ai/ollama_client.py's
+      // OllamaUnavailableError) and any other backend failure with a
+      // real JSON {detail} body, so the agent sees the actual cause
+      // instead of the pipeline silently trying to render an error
+      // response as if it were a successful investigation result.
+      const errData = await response.json().catch(() => ({}));
+      alert(formatErrorDetail(errData.detail, 'Erreur lors du lancement de l\'investigation.'));
+      document.getElementById('pipelineCard').style.display = 'none';
+      return;
+    }
 
     const data = await response.json();
 
@@ -1925,6 +3320,14 @@ async function submitComplaint() {
     }
 
     document.getElementById('evidenceNoteText').textContent = data.search_note || 'Recherche sur la periode ' + (data.classification?.event_date ? 'ancree sur le ' + data.classification.event_date : 'par defaut') + '.';
+
+    emailComposeData.result = data.log_id ? {
+      logId: data.log_id,
+      category: data.classification?.category,
+      msisdn: data.classification?.msisdn,
+      explanation: data.explanation,
+      match_confidence: data.match_confidence,
+    } : null;
 
     const evidenceBox = document.getElementById('evidenceBox');
     const evidenceSummary = document.getElementById('evidenceSummary');
@@ -2117,6 +3520,16 @@ function initOrb(){
 
   let sphAngle = 0;
   const sphTilt = 0.16;
+  // Set from the profile page's "Réduire les animations" toggle
+  // (localStorage-persisted, see onReduceMotionChange()) -- freezes
+  // rotation, starfield twinkle, and ticker auto-cycling rather than
+  // hiding the sphere entirely, so it stays informative, just still.
+  let sphReduceMotion = localStorage.getItem('tt_reduce_motion') === '1';
+  window.sphSetReduceMotion = function(on){
+    sphReduceMotion = on;
+    if (on && tickerTimer) { clearInterval(tickerTimer); tickerTimer = null; }
+    else if (!on && !tickerTimer && tickerItems.length > 0) { tickerTimer = setInterval(tickerRenderNext, TICKER_CYCLE_MS); }
+  };
   const golden = Math.PI * (3 - Math.sqrt(5));
 
   let allInvestigations = []; // full fetched set, real /investigations/history rows
@@ -2132,6 +3545,7 @@ function initOrb(){
   // that's clearly up. See sphCheckHealth() for the independent periodic
   // check that drives this outside of data-loading moments too.
   let sphServerDown = false;
+  let sphLlmDown = false;
 
   async function sphLoadRealData(){
     if (!authToken) return;
@@ -2189,7 +3603,7 @@ function initOrb(){
       return;
     }
     tickerRenderNext();
-    if (!tickerTimer) tickerTimer = setInterval(tickerRenderNext, TICKER_CYCLE_MS);
+    if (!tickerTimer && !sphReduceMotion) tickerTimer = setInterval(tickerRenderNext, TICKER_CYCLE_MS);
   }
 
   function tickerRenderNext(){
@@ -2365,7 +3779,7 @@ function initOrb(){
     ctx.save();
     starLayers.forEach(stars => {
       stars.forEach(s => {
-        const twinkle = 0.6 + 0.4*Math.sin(now*s.twinkleSpeed + s.twinklePhase);
+        const twinkle = sphReduceMotion ? 0.8 : 0.6 + 0.4*Math.sin(now*s.twinkleSpeed + s.twinklePhase);
         ctx.beginPath();
         ctx.fillStyle = `rgba(210,230,245,${(s.baseAlpha*twinkle).toFixed(2)})`;
         ctx.arc(s.fx*W, s.fy*H, s.size, 0, Math.PI*2);
@@ -2626,7 +4040,7 @@ function initOrb(){
     ctx.clearRect(0,0,W,H);
     drawStarfield(now);
     const c = colorsForState();
-    sphAngle += 0.0016;
+    if (!sphReduceMotion) sphAngle += 0.0016;
 
     const proj = renderPoints.map(project);
 
@@ -2760,6 +4174,14 @@ function initOrb(){
       badgeText.textContent = 'HORS LIGNE · SERVEUR INJOIGNABLE';
       badgeLeft.classList.add('sph-urgent');
       badgeLeft.classList.remove('sph-loading');
+    } else if (sphLlmDown) {
+      // Server itself is fine -- the browsing/history side of the app
+      // still works -- but investigations need the LLM specifically, so
+      // this is called out as its own distinct state rather than folded
+      // into a generic "something's down" message.
+      badgeText.textContent = 'LLM INJOIGNABLE · INVESTIGATIONS INDISPONIBLES';
+      badgeLeft.classList.add('sph-urgent');
+      badgeLeft.classList.remove('sph-loading');
     } else {
       badgeText.textContent = sphLoaded ? 'VUE RÉSEAU · EN DIRECT' : 'CHARGEMENT…';
       badgeLeft.classList.remove('sph-urgent');
@@ -2773,6 +4195,9 @@ function initOrb(){
   // auth and is already the app's own lightweight liveness response
   // ({"status": "running", ...}); a hard timeout via AbortController
   // keeps a hung connection from leaving the badge stuck mid-check.
+  // /health/llm is checked the same way, separately -- the web server and
+  // Ollama are two independent processes that can each be up or down on
+  // their own (see app/ai/ollama_client.py's is_ollama_online()).
   async function sphCheckHealth(){
     try {
       const ctrl = new AbortController();
@@ -2782,6 +4207,21 @@ function initOrb(){
       sphServerDown = !resp.ok;
     } catch (err) {
       sphServerDown = true;
+    }
+
+    if (sphServerDown) {
+      sphLlmDown = false; // unknown, not necessarily down -- don't claim it
+    } else {
+      try {
+        const ctrl2 = new AbortController();
+        const timer2 = setTimeout(() => ctrl2.abort(), 4000);
+        const resp2 = await fetch('/health/llm', { signal: ctrl2.signal, cache: 'no-store' });
+        clearTimeout(timer2);
+        const data = await resp2.json();
+        sphLlmDown = !resp2.ok || !data.llm_online;
+      } catch (err) {
+        sphLlmDown = true;
+      }
     }
     sphUpdateBadge();
   }
@@ -2843,6 +4283,11 @@ function initOrb(){
     document.body.classList.add('sph-app-mode');
     coreBtn.tabIndex = -1;
     if (typeof showView === 'function') showView('history');
+  };
+  window.sphGoToProfile = function(){
+    document.body.classList.add('sph-app-mode');
+    coreBtn.tabIndex = -1;
+    if (typeof showView === 'function') showView('profile');
   };
   window.sphOpenTicket = function(logId){
     document.body.classList.add('sph-app-mode');

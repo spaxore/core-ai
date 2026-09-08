@@ -82,6 +82,43 @@ def get_recent_events(limit: int = 20):
     ]
 
 
+def get_user_activity(username: str, limit: int = 20):
+    """
+    One agent's own recent actions, across every event type -- unlike
+    get_investigation_history() (INVESTIGATE only, platform-wide) this is
+    scoped to a single username for the profile page's "Mon activité"
+    card, so an agent can see their own accountability trail without
+    needing the SECURITY_ANALYST-only full audit log.
+    """
+    conn = oracledb.connect(
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        dsn=os.getenv("DB_DSN")
+    )
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM (
+            SELECT LOG_ID, EVENT_TYPE, DETAILS, CREATED_AT
+            FROM TT_AI_AUDIT_LOG
+            WHERE USERNAME = :username
+            ORDER BY LOG_ID DESC
+        ) WHERE ROWNUM <= :limit
+    """, username=username, limit=limit)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return [
+        {
+            "log_id": r[0],
+            "event_type": r[1],
+            "details": r[2],
+            "created_at": r[3].isoformat() if r[3] else None,
+        }
+        for r in rows
+    ]
+
+
 def get_canary_events(limit: int = 20):
     """
     Same shape as get_recent_events(), filtered to CANARY_TRIGGERED rows

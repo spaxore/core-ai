@@ -1,13 +1,20 @@
+import smtplib
+
 from fastapi import FastAPI, Depends, Request, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional
-from app.ai.ollama_client import ask_ollama
+from app.ai.ollama_client import ask_ollama, is_ollama_online, OllamaUnavailableError
 from app.ai.classifier import classify_complaint
 from app.ai.explainer import explain_investigation
 from app.ai.case_memory import save_verified_case, update_case_status, get_verified_case_by_log_id, VALID_STATUSES
 from app.services.router import run_investigation
 from app.services.investigation_results import save_investigation_result, get_investigation_result, mark_superseded
+from app.services.email_account import send_email
+from app.services.user_admin import (
+    list_users, create_user, set_user_role, set_user_active,
+    unlock_user, reset_password, get_user_activity_admin,
+)
 from app.security.dependencies import get_current_user, require_role
 from app.security.audit import get_recent_events, get_investigation_history, get_investigation_stats, get_investigation_summary, get_canary_events
 from app.security.audit import log_event
@@ -17,6 +24,7 @@ from app.security.honeytoken import check_for_canary
 from app.security.mtls import channel_label
 from datetime import date, timedelta
 from app.routes.auth_routes import router as auth_router
+from app.routes.profile_routes import router as profile_router
 
 app = FastAPI(
     title="Secure TT AI Agent",
@@ -24,6 +32,13 @@ app = FastAPI(
     version="1.0"
 )
 app.include_router(auth_router)
+app.include_router(profile_router)
+
+
+@app.exception_handler(OllamaUnavailableError)
+def handle_ollama_unavailable(request: Request, exc: OllamaUnavailableError):
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
+
 
 @app.get("/")
 def home():
@@ -32,10 +47,21 @@ def home():
         "project": "Secure TT AI Agent"
     }
 
+
+@app.get("/health/llm")
+def llm_health():
+    return {"llm_online": is_ollama_online()}
+
 @app.get("/ui", response_class=HTMLResponse)
 def ui():
     with open("app/static_ui.html", "r", encoding="utf-8") as f:
-        return f.read()
+        content = f.read()
+    # No-cache: this file is read fresh from disk on every request during
+    # active development, but browsers cache an HTML response by default
+    # absent an explicit header telling them not to -- without this, an
+    # edit here can silently keep serving a stale copy until a hard
+    # refresh, which looks exactly like the edit never took effect.
+    return HTMLResponse(content=content, headers={"Cache-Control": "no-store"})
 
 @app.get("/test-ai")
 def test_ai():
@@ -404,6 +430,108 @@ def canary_events(limit: int = 20, user: dict = Depends(require_role("SUPPORT_AG
     return {"events": get_canary_events(limit)}
 
 
+class CreateUserRequest(BaseModel):
+    username: str
+    role: str
+    password: str
+
+
+class UpdateUserRequest(BaseModel):
+    role: Optional[str] = None
+    active: Optional[bool] = None
+
+
+@app.get("/admin/users")
+def admin_list_users(user: dict = Depends(require_role("SECURITY_ANALYST"))):
+    return {"users": list_users()}
+
+
+@app.post("/admin/users")
+def admin_create_user(payload: CreateUserRequest, http_request: Request,
+                       user: dict = Depends(require_role("SECURITY_ANALYST"))):
+    try:
+        create_user(payload.username, payload.role, payload.password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    log_event(
+        "USER_CREATED",
+        username=user["username"], role=user["role"],
+        details=f"created={payload.username}, role={payload.role}, channel={channel_label(http_request)}",
+        ip_address=http_request.client.host,
+    )
+    return {"status": "created", "username": payload.username}
+
+
+@app.patch("/admin/users/{username}")
+def admin_update_user(username: str, payload: UpdateUserRequest, http_request: Request,
+                       user: dict = Depends(require_role("SECURITY_ANALYST"))):
+    if payload.active is False and username == user["username"]:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas désactiver votre propre compte.")
+
+    if payload.role is not None:
+        try:
+            if not set_user_role(username, payload.role):
+                raise HTTPException(status_code=404, detail=f"Utilisateur '{username}' introuvable.")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        log_event(
+            "USER_ROLE_CHANGED",
+            username=user["username"], role=user["role"],
+            details=f"target={username}, new_role={payload.role}, channel={channel_label(http_request)}",
+            ip_address=http_request.client.host,
+        )
+
+    if payload.active is not None:
+        if not set_user_active(username, payload.active):
+            raise HTTPException(status_code=404, detail=f"Utilisateur '{username}' introuvable.")
+        log_event(
+            "USER_ACTIVATED" if payload.active else "USER_DEACTIVATED",
+            username=user["username"], role=user["role"],
+            details=f"target={username}, channel={channel_label(http_request)}",
+            ip_address=http_request.client.host,
+        )
+
+    return {"status": "updated", "username": username}
+
+
+@app.post("/admin/users/{username}/unlock")
+def admin_unlock_user(username: str, http_request: Request,
+                       user: dict = Depends(require_role("SECURITY_ANALYST"))):
+    if not unlock_user(username):
+        raise HTTPException(status_code=404, detail=f"Utilisateur '{username}' introuvable.")
+
+    log_event(
+        "USER_UNLOCKED",
+        username=user["username"], role=user["role"],
+        details=f"target={username}, channel={channel_label(http_request)}",
+        ip_address=http_request.client.host,
+    )
+    return {"status": "unlocked", "username": username}
+
+
+@app.post("/admin/users/{username}/reset-password")
+def admin_reset_password(username: str, http_request: Request,
+                          user: dict = Depends(require_role("SECURITY_ANALYST"))):
+    try:
+        new_password = reset_password(username)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    log_event(
+        "USER_PASSWORD_RESET",
+        username=user["username"], role=user["role"],
+        details=f"target={username}, channel={channel_label(http_request)}",
+        ip_address=http_request.client.host,
+    )
+    return {"status": "reset", "username": username, "password": new_password}
+
+
+@app.get("/admin/users/{username}/activity")
+def admin_user_activity(username: str, user: dict = Depends(require_role("SECURITY_ANALYST"))):
+    return {"activity": get_user_activity_admin(username, limit=20)}
+
+
 @app.get("/investigations/history")
 def investigation_history(limit: int = 50, category: Optional[str] = None, msisdn: Optional[str] = None,
                            user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
@@ -518,6 +646,44 @@ def verify_investigation(log_id: int, payload: VerifyInvestigationRequest, http_
     )
 
     return {"case_id": case_id, "status": payload.status, "correction_note": payload.correction_note}
+
+
+class SendInvestigationEmailRequest(BaseModel):
+    recipient: str
+    subject: str
+    body: str
+
+
+@app.post("/investigations/{log_id}/send-email")
+def send_investigation_email(log_id: int, payload: SendInvestigationEmailRequest, http_request: Request,
+                              user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):
+    """
+    Sends a validated ticket's data by email from the agent's own linked
+    account (see app/services/email_account.py). Deliberately re-checks
+    "human_validated" server-side rather than trusting that the frontend
+    only shows this button on a validated ticket -- the button hiding is
+    a UX convenience, not the actual access control.
+    """
+    verification = get_verified_case_by_log_id(log_id)
+    if verification is None or verification["status"] != "human_validated":
+        raise HTTPException(status_code=403, detail="Seuls les dossiers validés peuvent être envoyés par email.")
+
+    try:
+        sender_email = send_email(user["username"], payload.recipient, payload.subject, payload.body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (smtplib.SMTPException, OSError) as e:
+        raise HTTPException(status_code=400, detail=f"Échec de l'envoi : {e}")
+
+    log_event(
+        "EMAIL_SENT",
+        username=user["username"],
+        role=user["role"],
+        details=f"log_id={log_id}, recipient={payload.recipient}, sender={sender_email}, channel={channel_label(http_request)}",
+        ip_address=http_request.client.host,
+    )
+
+    return {"status": "sent", "recipient": payload.recipient, "sender": sender_email}
 
 
 class CorrectInvestigationRequest(BaseModel):
