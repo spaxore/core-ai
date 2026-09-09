@@ -6,7 +6,7 @@
 customers, with an enterprise-grade cybersecurity layer built around it — and its own
 purpose-built offensive security tooling to continuously validate that layer.**
 
-Internship project - Tunisie Telecom (DCSI Kasbah) - NIDS (Reseaux et Securite des
+Internship project - Tunisie Telecom - NIDS (Reseaux et Securite des
 Donnees), ESPRIT. Career focus: Cloud Security Architecture.
 
 ---
