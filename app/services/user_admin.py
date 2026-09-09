@@ -56,19 +56,30 @@ def list_users():
     conn = _get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT USERNAME, ROLE, IS_ACTIVE, CREATED_AT, LOCKED_UNTIL
-        FROM TT_AI_USERS ORDER BY CREATED_AT
+        SELECT u.USERNAME, u.ROLE, u.IS_ACTIVE, u.CREATED_AT, u.LOCKED_UNTIL,
+               l.EMAIL_ADDRESS,
+               (SELECT MAX(a.CREATED_AT) FROM TT_AI_AUDIT_LOG a
+                WHERE a.USERNAME = u.USERNAME AND a.EVENT_TYPE = 'LOGIN_SUCCESS') AS LAST_ACTIVE
+        FROM TT_AI_USERS u
+        LEFT JOIN TT_AI_USER_EMAIL_LINKS l ON l.USERNAME = u.USERNAME
+        ORDER BY u.CREATED_AT
     """)
     rows = cursor.fetchall()
 
     users = []
-    for username, role, is_active, created_at, locked_until in rows:
+    for username, role, is_active, created_at, locked_until, email, last_active in rows:
         locked = bool(locked_until and locked_until > datetime.now())
         users.append({
             "username": username,
             "role": role,
             "active": bool(is_active),
             "created_at": created_at.isoformat() if created_at else None,
+            # Real linked-email-account address (see app/services/email_account.py)
+            # -- None when the agent never linked one, not fabricated.
+            "email": email,
+            # Real last successful login from the audit log -- None for a
+            # user who was created but has never logged in yet.
+            "last_active": last_active.isoformat() if last_active else None,
             "locked": locked,
             "lock_reason": _get_lock_reason(cursor, username) if locked else None,
         })

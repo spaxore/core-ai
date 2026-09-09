@@ -42,6 +42,14 @@ def ask_ollama(prompt, temperature=0.2):
 
     result = response.json()
 
+    # Ollama returns 200 with a JSON body even for some failures (e.g. the
+    # model failing to load), just without a "response" key -- an
+    # unqualified result["response"] then surfaces as an opaque KeyError /
+    # 500 instead of the actual cause Ollama already reported.
+    if "response" not in result:
+        detail = result.get("error", "réponse inattendue du service LLM.")
+        raise OllamaUnavailableError(f"Ollama a échoué : {detail}")
+
     return result["response"]
 
 

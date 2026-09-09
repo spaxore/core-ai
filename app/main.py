@@ -1,4 +1,5 @@
 import smtplib
+import subprocess
 
 from fastapi import FastAPI, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -52,10 +53,24 @@ def home():
 def llm_health():
     return {"llm_online": is_ollama_online()}
 
+def _build_version() -> str:
+    """The actual deployed commit's short hash -- real, verifiable data,
+    not a hand-maintained version number that'll drift out of sync with
+    what's really running. Falls back to a plain dash if git isn't
+    available (e.g. a source-only deployment with no .git directory)."""
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL,
+        ).decode().strip()
+    except Exception:
+        return "-"
+
+
 @app.get("/ui", response_class=HTMLResponse)
 def ui():
     with open("app/static_ui.html", "r", encoding="utf-8") as f:
         content = f.read()
+    content = content.replace("{{BUILD_VERSION}}", _build_version())
     # No-cache: this file is read fresh from disk on every request during
     # active development, but browsers cache an HTML response by default
     # absent an explicit header telling them not to -- without this, an
