@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from app.security.dependencies import get_current_user
-from app.security.auth import verify_password, hash_password
+from app.security.auth import verify_password, hash_password, validate_password_strength
 from app.security.audit import log_event, get_user_activity
 from app.security.mtls import channel_label
 from app.services.email_account import (
@@ -100,6 +100,13 @@ def change_password(payload: ChangePasswordRequest, http_request: Request, user:
             ip_address=http_request.client.host,
         )
         raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+
+    try:
+        validate_password_strength(payload.new_password)
+    except ValueError as e:
+        cursor.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail=str(e))
 
     new_hash = hash_password(payload.new_password)
     cursor.execute(

@@ -28,6 +28,9 @@ GRADE_COLORS = {
     "FAIL": "#b00020",
     "ERROR": "#8a2be2",
     "UNKNOWN_EXPECTED": "#888888",
+    # Distinct from FAIL/ERROR on purpose -- this is an infra outage
+    # (Ollama unreachable), not a security control failing. See scorer.py.
+    "BACKEND_UNAVAILABLE": "#b7791f",
 }
 
 
@@ -87,8 +90,22 @@ def generate_html(data: dict) -> str:
 
     pass_rate = round(100 * summary["pass"] / summary["total"], 1) if summary["total"] else 0
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+    backend_unavailable = summary.get("backend_unavailable", 0)
 
     overall_color = "#1e7e34" if summary["fail"] == 0 and summary["error"] == 0 else "#b00020"
+
+    backend_warning_html = ""
+    if backend_unavailable:
+        backend_warning_html = f"""
+  <div class="card" style="border-left: 4px solid #b7791f;">
+    <h3 style="color:#b7791f;">AI backend was offline during this run</h3>
+    <p style="margin:0; font-size:13px;">
+      {backend_unavailable} attack(s) got HTTP 503 (Ollama unreachable) instead of a real
+      Gateway verdict and are graded <b>BACKEND_UNAVAILABLE</b>, excluded from the pass/fail
+      counts above rather than misreported as security failures. Free up GPU memory / restart
+      Ollama and re-run for a complete result set.
+    </p>
+  </div>"""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -158,6 +175,7 @@ def generate_html(data: dict) -> str:
   <div class="subtitle">Secure TT AI Agent - AI Security Gateway validation - generated {generated_at}</div>
 
   <div class="overall">{"ALL CHECKS PASSED" if summary["fail"] == 0 and summary["error"] == 0 else f"{summary['fail'] + summary['error']} ISSUE(S) FOUND"}</div>
+  {backend_warning_html}
 
   <div class="overview">
     <div class="stat"><div class="num">{summary['total']}</div><div class="label">Total attacks</div></div>
@@ -165,6 +183,7 @@ def generate_html(data: dict) -> str:
     <div class="stat"><div class="num" style="color:#b00020">{summary['fail']}</div><div class="label">Failed</div></div>
     <div class="stat"><div class="num" style="color:#8a2be2">{summary['error']}</div><div class="label">Errors</div></div>
     <div class="stat"><div class="num">{pass_rate}%</div><div class="label">Pass rate</div></div>
+    {f'<div class="stat"><div class="num" style="color:#b7791f">{backend_unavailable}</div><div class="label">Backend unavailable</div></div>' if backend_unavailable else ""}
   </div>
 
   {render_summary_table("By Category", summary["by_category"])}

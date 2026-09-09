@@ -4,13 +4,21 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import oracledb
 
-from app.security.auth import verify_password, create_access_token
+from app.security.auth import verify_password, create_access_token, hash_password
 from app.security.audit import log_event
 from app.security.lockout import is_locked, check_and_apply_login_lockout
 
 load_dotenv()
 
 router = APIRouter()
+
+# Computed once at import time, never a real account's hash -- used only to
+# burn the same bcrypt-verify time as a real login attempt on the "user not
+# found" path below. Without this, that path returns immediately while a
+# real user's wrong-password path calls verify_password() (deliberately
+# slow), giving an attacker a timing oracle to enumerate valid usernames
+# even though both paths return an identical response body.
+_DUMMY_HASH_FOR_TIMING = hash_password("not-a-real-password-only-for-timing-parity")
 
 class LoginRequest(BaseModel):
     username: str
@@ -41,6 +49,7 @@ def login(request: LoginRequest, http_request: Request):
     if row is None:
         cursor.close()
         conn.close()
+        verify_password(request.password, _DUMMY_HASH_FOR_TIMING)
         log_event("LOGIN_FAILURE", username=request.username, details="User not found", ip_address=client_ip)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 

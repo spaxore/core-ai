@@ -96,6 +96,23 @@ def login(base_url: str, username: str, password: str) -> str:
     return token
 
 
+def check_llm_health(base_url: str, timeout: int = 10) -> Optional[bool]:
+    """Checks the platform's /health/llm before firing attacks that depend
+    on it (benign controls, retrieval-poisoning isolation checks -- see
+    scorer.py's BACKEND_UNAVAILABLE grade). /health/llm is unauthenticated,
+    so this needs no token. Returns True/False for a real answer, or None
+    if the platform itself couldn't be reached at all -- a more
+    fundamental problem than Ollama specifically, which the run below
+    will surface immediately on the first attack anyway."""
+    try:
+        resp = _session.get(f"{base_url}/health/llm", timeout=timeout)
+        if resp.status_code != 200:
+            return None
+        return bool(resp.json().get("llm_online"))
+    except requests.RequestException:
+        return None
+
+
 LOCKOUT_MARKERS = ("temporarily locked", "security violations")
 
 
@@ -230,6 +247,17 @@ def run(base_url: str, username: str = None, password: str = None, attacks_dir: 
     """
     if token is None and (username is None or password is None):
         raise ValueError("run() requires either a token, or both username and password")
+
+    llm_online = check_llm_health(base_url)
+    if llm_online is False:
+        print("=" * 72)
+        print("WARNING: the AI backend (Ollama) is currently OFFLINE.")
+        print("Benign-control and retrieval-poisoning-isolation attacks depend on")
+        print("it and will come back HTTP 503, graded BACKEND_UNAVAILABLE rather")
+        print("than PASS/FAIL. Gateway-only attacks (injection/jailbreak/")
+        print("exfiltration/role-confusion/sql-injection-via-prompt) are blocked")
+        print("before ever reaching the LLM and are unaffected.")
+        print("=" * 72 + "\n")
 
     print(f"Loading attack library from {attacks_dir} ...")
     attacks = load_attack_library(attacks_dir)

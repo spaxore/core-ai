@@ -10,7 +10,7 @@ from datetime import datetime
 import oracledb
 from dotenv import load_dotenv
 
-from app.security.auth import hash_password
+from app.security.auth import hash_password, validate_password_strength
 from app.security.audit import get_user_activity
 
 load_dotenv()
@@ -112,6 +112,7 @@ def create_user(username: str, role: str, password: str):
         raise ValueError(f"Invalid role '{role}'. Must be one of: {sorted(VALID_ROLES)}")
     if user_exists(username):
         raise ValueError(f"Username '{username}' already exists.")
+    validate_password_strength(password)
 
     conn = _get_connection()
     cursor = conn.cursor()

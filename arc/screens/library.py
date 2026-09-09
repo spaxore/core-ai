@@ -766,6 +766,21 @@ class LibraryScreen(Screen):
             llm_redteam_dir = os.path.normpath(os.path.join(self.attacks_dir, ".."))
             bridge = RedTeamBridge(llm_redteam_dir)
 
+            # Warn up front rather than let benign-control/isolation results
+            # come back as a confusing wall of FAILs -- see scorer.py's
+            # BACKEND_UNAVAILABLE grade for how those individual results are
+            # still reported honestly either way.
+            llm_online = bridge.runner.check_llm_health(self.session.base_url)
+            if llm_online is False:
+                self.app.call_from_thread(
+                    self.app.notify,
+                    "Benign-control and isolation checks will show BACKEND_UNAVAILABLE, "
+                    "not PASS/FAIL. Gateway-only attacks are unaffected.",
+                    title="AI backend (Ollama) is offline",
+                    severity="warning",
+                    timeout=10,
+                )
+
             self.app.call_from_thread(
                 self._update_live_row_label,
                 f"Running full suite via llm-redteam — 0/{total} "

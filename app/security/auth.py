@@ -12,6 +12,20 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
+MIN_PASSWORD_LENGTH = 8
+
+
+def validate_password_strength(password: str) -> None:
+    """Raises ValueError with a user-facing message if the password is too
+    weak. Server-side, deliberately -- the frontend's generated-password
+    helper (samplePassword()) is a UX nicety, not a security control, and
+    every caller of create_user()/change_password() must go through this
+    regardless of how the request was actually made (UI vs a direct API
+    call)."""
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise ValueError(f"Le mot de passe doit contenir au moins {MIN_PASSWORD_LENGTH} caractères.")
+
+
 def hash_password(plain_password: str) -> str:
     return pwd_context.hash(plain_password)
 
