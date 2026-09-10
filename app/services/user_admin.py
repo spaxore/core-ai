@@ -168,9 +168,14 @@ def reset_password(username: str) -> str:
     new_password = generate_password()
     conn = _get_connection()
     cursor = conn.cursor()
+    # PASSWORD_CHANGED_AT in UTC -- matches create_access_token()'s iat
+    # basis (app/security/auth.py), which get_current_user() compares it
+    # against directly. This is exactly the "force a compromised account's
+    # credentials to rotate" action, so it needs to actually invalidate
+    # that account's live session too, not just its next login attempt.
     cursor.execute(
-        "UPDATE TT_AI_USERS SET PASSWORD_HASH = :password_hash WHERE USERNAME = :username",
-        password_hash=hash_password(new_password), username=username,
+        "UPDATE TT_AI_USERS SET PASSWORD_HASH = :password_hash, PASSWORD_CHANGED_AT = :changed_at WHERE USERNAME = :username",
+        password_hash=hash_password(new_password), changed_at=datetime.utcnow(), username=username,
     )
     updated = cursor.rowcount > 0
     conn.commit()

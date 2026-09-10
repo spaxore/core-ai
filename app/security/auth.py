@@ -33,8 +33,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 def create_access_token(username: str, role: str) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {"sub": username, "role": role, "exp": expire}
+    issued_at = datetime.utcnow()
+    expire = issued_at + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    # iat lets get_current_user() reject a token issued before the
+    # account's most recent password change (see
+    # app.security.lockout.get_password_changed_at) -- without it, a
+    # password change/reset didn't actually invalidate a token an
+    # attacker already had, only a future login attempt.
+    payload = {"sub": username, "role": role, "iat": issued_at, "exp": expire}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 def decode_access_token(token: str):

@@ -1,0 +1,68 @@
+name: CI
+
+# Deliberately not running tests/test_regression_full.py or the ARC attack
+# suite here -- both need a live Oracle DB, a running TT server, and a live
+# Ollama model, none of which exist on a GitHub-hosted runner. "Minimal CI"
+# for this project means the checks that don't require that infrastructure:
+# does every Python file still parse, are the attack YAML files still
+# well-formed (ARC silently skips a broken one -- see load_attack_library()
+# in llm-redteam/runner.py), and does pip-audit still show the same known,
+# already-documented dependency gap rather than something new.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Compile-check every Python file (app, tests, llm-redteam, arc)
+        run: python -m compileall -q app tests llm-redteam arc
+
+      - name: Validate every attack YAML file parses and has the expected shape
+        run: |
+          python - <<'EOF'
+          import glob
+          import sys
+          import yaml
+
+          failed = False
+          for path in glob.glob("llm-redteam/attacks/*.yaml"):
+              with open(path, "r", encoding="utf-8") as f:
+                  data = yaml.safe_load(f)
+              if not data or "attacks" not in data:
+                  print(f"FAIL: {path} has no 'attacks' key")
+                  failed = True
+                  continue
+              for attack in data["attacks"]:
+                  # 'prompt' isn't universal -- retrieval_poisoning.yaml uses
+                  # a seed/probe structure for two entries instead, a
+                  # deliberately different evasion class (see its notes).
+                  for field in ("id", "name", "expected"):
+                      if field not in attack:
+                          print(f"FAIL: {path} attack missing '{field}': {attack}")
+                          failed = True
+                  if "prompt" not in attack and "seed" not in attack:
+                      print(f"FAIL: {path} attack has neither 'prompt' nor 'seed': {attack}")
+                      failed = True
+              print(f"OK: {path} ({len(data['attacks'])} attacks)")
+
+          sys.exit(1 if failed else 0)
+          EOF
+
+      - name: Dependency audit (informational -- known gaps are already documented)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt || true

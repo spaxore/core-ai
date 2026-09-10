@@ -2621,6 +2621,56 @@ function logout() {
   renderNotifications();
 }
 
+// Every authenticated fetch() call site in this file handles its own
+// success/error path individually (no shared apiFetch() helper exists),
+// which meant get_current_user()'s new checks (deactivated account,
+// password-changed invalidation) were enforced correctly on the backend
+// but most call sites just showed an empty/stale view instead of actually
+// logging the user out -- only submitComplaint()'s own 401 handling did
+// that, and only for its own endpoint. Patching every call site individually
+// would be ~15 near-identical edits; wrapping fetch() once here covers all
+// of them, including future ones, without touching any existing call site.
+// Deliberately narrow: only acts on requests that sent our Authorization
+// header (so /login itself, which has none, is untouched) and only forces
+// logout for the specific 401/403 cases that actually mean "this session
+// is no longer valid" -- a role-based 403 ("Insufficient permissions") or
+// a Gateway-block 403 (structured {message,...} detail, not a string) are
+// left alone so existing per-call-site handling still shows its own message
+// without an unwanted logout.
+(function() {
+  const _originalFetch = window.fetch.bind(window);
+  const SESSION_INVALID_DETAILS = new Set([
+    'Account disabled',
+    'Account temporarily locked due to security violations',
+  ]);
+
+  window.fetch = async function(input, init) {
+    const response = await _originalFetch(input, init);
+
+    const hasAuthHeader = !!(init && init.headers && init.headers['Authorization']);
+    if (!hasAuthHeader || !authToken || (response.status !== 401 && response.status !== 403)) {
+      return response;
+    }
+
+    let detail = null;
+    try {
+      detail = (await response.clone().json()).detail;
+    } catch (e) {
+      // Not a JSON body -- fall through, 401 still forces logout below.
+    }
+
+    const isSessionInvalid = response.status === 401 || (typeof detail === 'string' && SESSION_INVALID_DETAILS.has(detail));
+    if (isSessionInvalid) {
+      const message = (typeof detail === 'string' && detail) || 'Session expiree. Veuillez vous reconnecter.';
+      logout();
+      const statusEl = document.getElementById('loginStatus');
+      if (statusEl) statusEl.innerHTML = '<span id="loginError">' + message + '</span>';
+    }
+
+    return response;
+  };
+})();
+
 // Global navigation stack -- one back button in the topbar works from any
 // page, driven by what was actually visited rather than a hardcoded
 // "detail always goes back to X" rule. goTo() pushes wherever we currently

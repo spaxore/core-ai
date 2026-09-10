@@ -1,5 +1,6 @@
 import os
 import smtplib
+from datetime import datetime
 from typing import Optional
 
 import oracledb
@@ -109,9 +110,12 @@ def change_password(payload: ChangePasswordRequest, http_request: Request, user:
         raise HTTPException(status_code=400, detail=str(e))
 
     new_hash = hash_password(payload.new_password)
+    # UTC, matching create_access_token()'s iat basis -- get_current_user()
+    # compares the two directly, so both sides must use the same clock.
+    changed_at = datetime.utcnow()
     cursor.execute(
-        "UPDATE TT_AI_USERS SET PASSWORD_HASH = :new_hash WHERE USERNAME = :username",
-        new_hash=new_hash, username=user["username"],
+        "UPDATE TT_AI_USERS SET PASSWORD_HASH = :new_hash, PASSWORD_CHANGED_AT = :changed_at WHERE USERNAME = :username",
+        new_hash=new_hash, changed_at=changed_at, username=user["username"],
     )
     conn.commit()
     cursor.close()

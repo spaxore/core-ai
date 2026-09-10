@@ -20,7 +20,7 @@ from app.security.dependencies import get_current_user, require_role
 from app.security.audit import get_recent_events, get_investigation_history, get_investigation_stats, get_investigation_summary, get_canary_events
 from app.security.audit import log_event
 from app.security.gateway import inspect_prompt
-from app.security.lockout import check_and_apply_lockout
+from app.security.lockout import check_and_apply_lockout, check_and_apply_flag_escalation
 from app.security.honeytoken import check_for_canary
 from app.security.mtls import channel_label
 from datetime import date, timedelta
@@ -113,6 +113,7 @@ def classify(complaint: dict, http_request: Request, user: dict = Depends(requir
             details=f"FLAGGED classify: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={text}, channel={channel_label(http_request)}",
             ip_address=client_ip
         )
+        check_and_apply_flag_escalation(user["username"], user["role"], client_ip)
 
     result = classify_complaint(text)
 
@@ -177,6 +178,7 @@ def investigate(complaint: dict, http_request: Request, user: dict = Depends(req
             details=f"FLAGGED investigate: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={text}, channel={channel_label(http_request)}",
             ip_address=client_ip
         )
+        check_and_apply_flag_escalation(user["username"], user["role"], client_ip)
 
     classification = classify_complaint(text)
     category = classification.get("category")
@@ -369,6 +371,7 @@ def verify_case(payload: VerifyCaseRequest, http_request: Request, user: dict = 
             details=f"FLAGGED verify-case: score={scan['risk_score']} matches={[m['category'] for m in scan['matches']]} text={payload.complaint_text}, channel={channel_label(http_request)}",
             ip_address=client_ip
         )
+        check_and_apply_flag_escalation(user["username"], user["role"], client_ip)
 
     save_verified_case(
         complaint_text=payload.complaint_text,
