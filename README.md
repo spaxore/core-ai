@@ -1,7 +1,5 @@
 # Zero-Trust AI Investigation Platform with Integrated Offensive Security Validation
 
-*(repository: `secure-tt-ai-agent`)*
-
 **Core AI** - the name comes from the four pipeline stages, whose initials spell CORE: **C**lassify (`app/ai/classifier.py`), **O**rient (`app/services/router.py`), **R**etrieve (the category services and cross-source search) and **E**xplain (`app/ai/explainer.py`). The database holds twelve tables: five application tables (`TT_AI_*`) and seven source tables (`RD_T_UC_*`).
 
 **AI-powered complaint investigation platform for Tunisie Telecom prepaid mobile
