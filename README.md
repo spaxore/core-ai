@@ -1,6 +1,6 @@
 # Zero-Trust AI Investigation Platform with Integrated Offensive Security Validation
 
-**Core AI** - the name comes from the four pipeline stages, whose initials spell CORE: **C**lassify (`app/ai/classifier.py`), **O**rient (`app/services/router.py`), **R**etrieve (the category services and cross-source search) and **E**xplain (`app/ai/explainer.py`). The database holds twelve tables: five application tables (`TT_AI_*`) and seven source tables (`RD_T_UC_*`).
+**Core AI** runs every complaint through four stages: **C**lassify (`app/ai/classifier.py`), **O**rient (`app/services/router.py`), **R**etrieve (the category services and the cross-source search) and **E**xplain (`app/ai/explainer.py`). It is backed by twelve Oracle tables: five application tables (`TT_AI_*`) and seven read-only source tables (`RD_T_UC_*`).
 
 **AI-powered complaint investigation platform for Tunisie Telecom prepaid mobile
 customers, with an enterprise-grade cybersecurity layer built around it — and its own
@@ -289,10 +289,11 @@ VM's connection silently; mark the network Private or remove that rule.
 
 ## Notes on scope
 
-Authentication, RBAC, the AI Security Gateway, account containment, the hash-chained
-audit trail, and the entire offensive validation layer (`llm-redteam/` + `arc/`) were
-all self-imposed extensions beyond the original internship brief, which scoped only the
-AI assistant itself.
+The AI investigation assistant was proposed by Tunisie Telecom; the security architecture
+around it and the validation layer that tests it are the author's solution. They are
+delivered as three integrated layers, planned together: the AI investigation engine, the zero-trust security architecture around it (authentication,
+RBAC, the AI Security Gateway, account containment, the hash-chained audit trail), and
+the offensive validation layer (`llm-redteam/` + `arc/`) that tests it.
 
 ## Status
 
@@ -300,6 +301,6 @@ All five functional categories are complete. The security layer, self-learning
 correction mechanism, investigation trace, and offensive validation layer are
 functionally complete and independently verified; ARC has been run from a
 network-separated host. The two open red-team findings are the documented external
-bypasses. Documentation (architecture, threat model, API reference, security test
-report, user/deployment/ARC guides, evidence pack) and the final report are the remaining
-deliverables, tracked in the project blueprint (Phase 6).
+bypasses. The documentation set (architecture, threat model, API reference, security
+test report, user/deployment/ARC guides, evidence pack) accompanies the project
+blueprint (Phase 6).
