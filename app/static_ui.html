@@ -2511,6 +2511,23 @@ function formatErrorDetail(detail, fallback) {
   return detail || fallback;
 }
 
+// Escapes untrusted text before it goes into an innerHTML template.
+// Audit-log DETAILS (rendered in "Mon activité" / per-user activity)
+// embed the raw complaint text, and the Gateway only blocks instruction
+// patterns, not HTML -- so a complaint containing markup would otherwise
+// run as script in whoever views that activity (a SECURITY_ANALYST, in
+// the worst case). jsArg() is for values placed inside an inline
+// onclick="fn(...)" attribute: JSON.stringify makes a valid JS string
+// literal, escapeHtml makes it safe inside the attribute itself.
+function escapeHtml(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function jsArg(value) {
+  return escapeHtml(JSON.stringify(String(value)));
+}
+
 function formatCell(key, value) {
   if (value === null || value === undefined) return "";
   if (key === "START_DATE" && typeof value === "string") {
@@ -2546,7 +2563,7 @@ async function login() {
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      statusEl.innerHTML = '<span id="loginError">' + (errData.detail || 'Identifiants invalides.') + '</span>';
+      statusEl.innerHTML = '<span id="loginError">' + escapeHtml(errData.detail || 'Identifiants invalides.') + '</span>';
       btn.disabled = false;
       return;
     }
@@ -2592,7 +2609,7 @@ async function login() {
       sphGoToHistory();
     }
   } catch (err) {
-    statusEl.innerHTML = '<span id="loginError">Erreur de connexion au serveur: ' + err.message + '</span>';
+    statusEl.innerHTML = '<span id="loginError">Erreur de connexion au serveur: ' + escapeHtml(err.message) + '</span>';
   } finally {
     btn.disabled = false;
   }
@@ -2664,7 +2681,7 @@ function logout() {
       const message = (typeof detail === 'string' && detail) || 'Session expiree. Veuillez vous reconnecter.';
       logout();
       const statusEl = document.getElementById('loginStatus');
-      if (statusEl) statusEl.innerHTML = '<span id="loginError">' + message + '</span>';
+      if (statusEl) statusEl.innerHTML = '<span id="loginError">' + escapeHtml(message) + '</span>';
     }
 
     return response;
@@ -2791,8 +2808,8 @@ function showToast(title, detail, type = 'success', duration = 5000) {
   el.innerHTML = `
     <div class="toast-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${TOAST_ICON_SVG[type] || TOAST_ICON_SVG.success}</svg></div>
     <div class="toast-body">
-      <div class="toast-title">${title}</div>
-      ${detail ? `<div class="toast-detail">${detail}</div>` : ''}
+      <div class="toast-title">${escapeHtml(title)}</div>
+      ${detail ? `<div class="toast-detail">${escapeHtml(detail)}</div>` : ''}
     </div>
     <button class="toast-close" onclick="this.closest('.toast').remove()">&times;</button>
   `;
@@ -2967,7 +2984,7 @@ function roleLabelFr(role) { return role === 'SECURITY_ANALYST' ? 'Security Anal
 function buildUserRowMenuHtml(u) {
   const isSelf = u.username === authUsername;
   const unlockItem = u.locked ? `
-    <div class="row-menu-item" onclick="unlockUserRow('${u.username}')">
+    <div class="row-menu-item" onclick="unlockUserRow(${jsArg(u.username)})">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.5-2"/></svg>
       Déverrouiller
     </div>` : '';
@@ -2976,21 +2993,21 @@ function buildUserRowMenuHtml(u) {
          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6" stroke-linecap="round"/></svg>
          Désactiver (votre compte)
        </div>`
-    : `<div class="row-menu-item danger" onclick="onToggleActiveClick('${u.username}', ${u.active})">
+    : `<div class="row-menu-item danger" onclick="onToggleActiveClick(${jsArg(u.username)}, ${u.active ? 'true' : 'false'})">
          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6" stroke-linecap="round"/></svg>
          ${u.active ? 'Désactiver le compte' : 'Activer le compte'}
        </div>`;
   return `
-    <div class="row-menu-item" onclick="openUserActivityModal('${u.username}')">
+    <div class="row-menu-item" onclick="openUserActivityModal(${jsArg(u.username)})">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Voir l'activité
     </div>
     <div class="row-menu-divider"></div>
-    <div class="row-menu-item" onclick="openRoleChangeModal('${u.username}', '${u.role}')">
+    <div class="row-menu-item" onclick="openRoleChangeModal(${jsArg(u.username)}, ${jsArg(u.role)})">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>
       Modifier le rôle
     </div>
-    <div class="row-menu-item" onclick="openResetPasswordConfirm('${u.username}')">
+    <div class="row-menu-item" onclick="openResetPasswordConfirm(${jsArg(u.username)})">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       Réinitialiser le mot de passe
     </div>
@@ -3014,21 +3031,21 @@ function userRowHtml(u, i) {
          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
          Verrouillé
        </span>
-       <div class="urow-lock-reason">${u.lock_reason || ''}</div>`
+       <div class="urow-lock-reason">${escapeHtml(u.lock_reason)}</div>`
     : '<span class="no-lock">--</span>';
 
   return `
     <tr class="urow" style="animation-delay:${i * 35}ms;">
       <td>
         <div class="urow-user">
-          <div class="urow-avatar">${u.username.charAt(0).toUpperCase()}</div>
+          <div class="urow-avatar">${escapeHtml(u.username.charAt(0).toUpperCase())}</div>
           <div>
-            <div class="mono urow-name">${u.username}</div>
+            <div class="mono urow-name">${escapeHtml(u.username)}</div>
             <div class="urow-created">${lastActiveStr}</div>
           </div>
         </div>
       </td>
-      <td class="urow-email">${emailStr}</td>
+      <td class="urow-email">${escapeHtml(emailStr)}</td>
       <td class="urow-role ${u.role === 'SECURITY_ANALYST' ? 'urow-role-analyst' : 'urow-role-support'}">${roleLabelFr(u.role)}</td>
       <td class="urow-created-col">${createdStr}</td>
       <td><span class="status-pill ${u.active ? 'active' : 'inactive'}"><span class="dot"></span>${u.active ? 'Actif' : 'Désactivé'}</span></td>
@@ -3331,8 +3348,8 @@ function userActivityItemHtml(item) {
     <div class="activity-item">
       <div class="activity-icon ${iconClass}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${svg}</svg></div>
       <div class="activity-body">
-        <div class="activity-title">${label}</div>
-        <div class="activity-detail">${item.details || ''}</div>
+        <div class="activity-title">${escapeHtml(label)}</div>
+        <div class="activity-detail">${escapeHtml(item.details)}</div>
       </div>
       <div class="activity-time">${when}</div>
     </div>`;
@@ -3510,7 +3527,7 @@ function emailLinkedCardHtml(linked) {
   }
   return `
     <div class="pf-verified-box">
-      <span class="pf-verified-text">${linked.email}</span>
+      <span class="pf-verified-text">${escapeHtml(linked.email)}</span>
       <span class="pf-verified-check">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </span>
@@ -3643,8 +3660,8 @@ function activityItemHtml(item) {
     <div class="activity-item">
       <div class="activity-icon ${iconClass}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${svg}</svg></div>
       <div class="activity-body">
-        <div class="activity-title">${label}</div>
-        <div class="activity-detail">${item.details || ''}</div>
+        <div class="activity-title">${escapeHtml(label)}</div>
+        <div class="activity-detail">${escapeHtml(item.details)}</div>
       </div>
       <div class="activity-time">${when}</div>
     </div>
@@ -3777,8 +3794,8 @@ function renderNotifications() {
     <div class="notif-item${notifReadKeys.has(it.key) ? '' : ' unread'}" onclick="openNotification('${it.key}', ${it.logId})">
       <span class="notif-dot ${it.kind}"></span>
       <div class="notif-item-text">
-        <div class="notif-item-title">${it.title}</div>
-        <div class="notif-item-sub">${it.sub}</div>
+        <div class="notif-item-title">${escapeHtml(it.title)}</div>
+        <div class="notif-item-sub">${escapeHtml(it.sub)}</div>
       </div>
     </div>`).join('');
 }
@@ -3809,7 +3826,7 @@ function ticketCardHtml(h) {
     <div class="ticket-card" onclick="showTicketDetail(${h.log_id})">
       <div class="ticket-left">
         <div class="cat">${categoryIconHtml(h.category)}${CATEGORY_LABELS[h.category] || h.category || ''}</div>
-        <div class="meta">${h.msisdn || ''} · ${dateStr}</div>
+        <div class="meta">${escapeHtml(h.msisdn)} · ${dateStr}</div>
       </div>
       <div class="ticket-right">
         <span class="confidence-badge confidence-${confClass}" data-tooltip="${confidenceTooltip('evidence', h.match_confidence)}">${confLabel}</span>
@@ -4212,11 +4229,11 @@ function renderEvidenceInto(evidence, summaryEl, boxEl) {
     summaryEl.style.display = 'flex';
 
     let html = '<div class="evidence-table-wrapper"><table><thead><tr>';
-    keys.forEach(k => html += '<th>' + (COLUMN_LABELS[k] || k) + '</th>');
+    keys.forEach(k => html += '<th>' + escapeHtml(COLUMN_LABELS[k] || k) + '</th>');
     html += '</tr></thead><tbody>';
     evidence.forEach(row => {
       html += '<tr>';
-      keys.forEach(k => html += '<td>' + formatCell(k, row[k]) + '</td>');
+      keys.forEach(k => html += '<td>' + escapeHtml(formatCell(k, row[k])) + '</td>');
       html += '</tr>';
     });
     html += '</tbody></table></div>';
@@ -4597,7 +4614,7 @@ async function openTicketInPanel(logId) {
     const dateStr = t.created_at ? t.created_at.slice(0, 16).replace('T', ' ') : '';
     timelineHtml += `<div style="display:flex; align-items:flex-start; gap:10px;">
       ${timelineIcon(ICON_PERSON, 'var(--land-tint)', 'var(--land-text-soft)')}
-      <div><div style="font-size:12.5px; color:var(--land-text); font-weight:500;">Ticket créé par ${agentName}</div>
+      <div><div style="font-size:12.5px; color:var(--land-text); font-weight:500;">Ticket créé par ${escapeHtml(agentName)}</div>
       <div style="font-size:11px; color:var(--land-text-softer); margin-top:2px;">${dateStr}</div></div>
     </div>`;
     if (t.verification && t.verification.status) {
@@ -4699,8 +4716,8 @@ function renderPipelineTrace(steps) {
     <div class="pipeline-row" id="pipeline-row-${i}">
       <div class="pipeline-dot" id="pipeline-dot-${i}"></div>
       <div>
-        <div class="pipeline-label-text">${step.label}</div>
-        ${step.detail ? `<div class="pipeline-detail">${step.detail}</div>` : ''}
+        <div class="pipeline-label-text">${escapeHtml(step.label)}</div>
+        ${step.detail ? `<div class="pipeline-detail">${escapeHtml(step.detail)}</div>` : ''}
       </div>
     </div>`).join('');
 }
@@ -4858,7 +4875,7 @@ async function submitComplaint() {
     const evidenceSummary = document.getElementById('evidenceSummary');
     if (data.error) {
       evidenceSummary.style.display = 'none';
-      evidenceBox.innerHTML = '<span class="error-text">' + data.error + '</span>';
+      evidenceBox.innerHTML = '<span class="error-text">' + escapeHtml(data.error) + '</span>';
     } else {
       renderEvidenceInto(data.evidence, evidenceSummary, evidenceBox);
     }
@@ -5172,7 +5189,7 @@ function initOrb(){
     const el = document.createElement('div');
     el.className = 'sph-ticker-item';
     el.innerHTML =
-      '<span class="sph-tk-txt">#' + item.logId + ' — <span style="color:rgb(' + rgb + ');font-weight:600">' + item.category + '</span>' + (item.msisdn ? (' · ' + item.msisdn) : '') + '</span>' +
+      '<span class="sph-tk-txt">#' + item.logId + ' — <span style="color:rgb(' + rgb + ');font-weight:600">' + item.category + '</span>' + (item.msisdn ? (' · ' + escapeHtml(item.msisdn)) : '') + '</span>' +
       '<span class="sph-tk-t">' + item.dateStr + '</span>' +
       '<span class="sph-ticker-dot" style="background:rgb(' + rgb + ');box-shadow:0 0 6px rgb(' + rgb + ')"></span>';
     el.onclick = function(){ showTicketDetail(item.logId); };

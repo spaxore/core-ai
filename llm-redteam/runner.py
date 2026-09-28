@@ -113,7 +113,7 @@ def check_llm_health(base_url: str, timeout: int = 10) -> Optional[bool]:
         return None
 
 
-LOCKOUT_MARKERS = ("temporarily locked", "security violations")
+LOCKOUT_MARKERS = ("temporarily locked", "security violations", "account disabled")
 
 
 def is_lockout_response(status_code: int, response_body: Optional[dict]) -> bool:
@@ -287,7 +287,7 @@ def run(base_url: str, username: str = None, password: str = None, attacks_dir: 
                 "elapsed_ms": 0.0,
                 "error": None,
                 "locked_out": False,
-                "skipped_reason": f"Skipped: target account was auto-locked at attack #{locked_out_at}",
+                "skipped_reason": f"Skipped: target account was locked or disabled at attack #{locked_out_at}",
                 "run_at": datetime.now(timezone.utc).isoformat(),
             }
             results.append(skipped)
@@ -314,7 +314,7 @@ def run(base_url: str, username: str = None, password: str = None, attacks_dir: 
 
         if outcome.get("locked_out"):
             locked_out_at = i
-            print(f"\n  !! Target account got auto-locked at attack #{i}.")
+            print(f"\n  !! Target account was locked or disabled at attack #{i}.")
             print("  !! Remaining attacks will be marked SKIPPED, not scored as pass/fail.")
             print("  !! Unlock the account and rerun to get a complete result set:")
             print("     UPDATE TT_AI_USERS SET LOCKED_UNTIL = NULL WHERE USERNAME = '<user>'; COMMIT;\n")

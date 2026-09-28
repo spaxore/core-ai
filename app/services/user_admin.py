@@ -4,6 +4,7 @@ change role, unlock, reset password. SECURITY_ANALYST-only, enforced by
 the routes in app/main.py, not by this module.
 """
 import os
+import re
 import secrets
 from datetime import datetime
 
@@ -16,6 +17,11 @@ from app.security.audit import get_user_activity
 load_dotenv()
 
 VALID_ROLES = {"SUPPORT_AGENT", "SECURITY_ANALYST"}
+
+# Usernames are rendered in the admin UI and embedded in audit rows -- restrict
+# them to a plain, markup-free alphabet at the source rather than relying on
+# every rendering site to escape correctly.
+USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{3,50}$")
 
 # Excludes visually-ambiguous characters (0/O, 1/l/I) -- this is read off
 # a screen and typed or copy-pasted once, not memorized.
@@ -110,6 +116,8 @@ def user_exists(username: str) -> bool:
 def create_user(username: str, role: str, password: str):
     if role not in VALID_ROLES:
         raise ValueError(f"Invalid role '{role}'. Must be one of: {sorted(VALID_ROLES)}")
+    if not USERNAME_PATTERN.match(username):
+        raise ValueError("Nom d'utilisateur invalide : 3 à 50 caractères, lettres, chiffres, '.', '_' ou '-' uniquement.")
     if user_exists(username):
         raise ValueError(f"Username '{username}' already exists.")
     validate_password_strength(password)

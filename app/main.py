@@ -1,3 +1,4 @@
+import os
 import smtplib
 import subprocess
 
@@ -5,7 +6,7 @@ from fastapi import FastAPI, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional
-from app.ai.ollama_client import ask_ollama, is_ollama_online, OllamaUnavailableError
+from app.ai.ollama_client import is_ollama_online, OllamaUnavailableError
 from app.ai.classifier import classify_complaint
 from app.ai.explainer import explain_investigation
 from app.ai.case_memory import save_verified_case, update_case_status, get_verified_case_by_log_id, VALID_STATUSES
@@ -27,13 +28,54 @@ from datetime import date, timedelta
 from app.routes.auth_routes import router as auth_router
 from app.routes.profile_routes import router as profile_router
 
+# FastAPI's auto-generated /docs, /redoc and /openapi.json are unauthenticated
+# by default and hand anyone who can reach the port the complete route map
+# and request schemas. Off unless explicitly enabled for local development
+# (set ENABLE_API_DOCS=1) -- the API is documented in the project's own
+# API documentation instead.
+_docs_enabled = os.getenv("ENABLE_API_DOCS") == "1"
+
 app = FastAPI(
     title="Secure TT AI Agent",
     description="AI assistant for Tunisia Telecom complaint analysis",
-    version="1.0"
+    version="1.0",
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
 )
 app.include_router(auth_router)
 app.include_router(profile_router)
+
+
+# The UI is one self-contained page that uses inline <script>/<style> and
+# Google Fonts, so script-src/style-src have to allow 'unsafe-inline' -- the
+# CSP therefore does not stop injected inline script by itself (escaping in
+# static_ui.html is the real XSS control); what it does enforce is that the
+# page cannot be framed, cannot load plugins, cannot post forms elsewhere,
+# and can only talk back to its own origin.
+_SECURITY_HEADERS = {
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    ),
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Strict-Transport-Security": "max-age=31536000",
+}
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for name, value in _SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    return response
 
 
 @app.exception_handler(OllamaUnavailableError)
@@ -77,13 +119,6 @@ def ui():
     # edit here can silently keep serving a stale copy until a hard
     # refresh, which looks exactly like the edit never took effect.
     return HTMLResponse(content=content, headers={"Cache-Control": "no-store"})
-
-@app.get("/test-ai")
-def test_ai():
-    answer = ask_ollama("Classify this complaint: Client says his balance disappeared")
-    return {
-        "AI_Response": answer
-    }
 
 @app.post("/classify")
 def classify(complaint: dict, http_request: Request, user: dict = Depends(require_role("SUPPORT_AGENT", "SECURITY_ANALYST"))):

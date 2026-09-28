@@ -42,7 +42,13 @@ openssl genrsa -out server.key 2048
 openssl req -new -key server.key \
   -subj "/O=Secure-TT-AI-Agent/CN=localhost" \
   -out server.csr
-printf "subjectAltName=DNS:localhost,IP:127.0.0.1" > server_ext.cnf
+# tt-demo is the name a remote ARC (a VM / another machine) connects to, so the
+# host's IP can change per venue without re-issuing the cert -- map the name to
+# the current IP on the client instead (see scripts/vm_arc_wrapper.sh). Any
+# fixed LAN IPs to also cover: EXTRA_SAN_IPS="192.168.1.72 192.168.1.128" bash scripts/generate_mtls_certs.sh
+SAN="DNS:localhost,DNS:tt-demo,IP:127.0.0.1"
+for ip in ${EXTRA_SAN_IPS:-}; do SAN="$SAN,IP:$ip"; done
+printf "subjectAltName=%s" "$SAN" > server_ext.cnf
 openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
   -days "$DAYS" -sha256 \
   -extfile server_ext.cnf \

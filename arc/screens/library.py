@@ -595,9 +595,11 @@ class LibraryScreen(Screen):
         await scroll.mount(Static("LAST RESULT (this session)", classes="detail-label"))
         last = self.last_results.get(attack.id)
         if last == "PASS":
-            await scroll.mount(Static(f"[{ARC_GREEN}]✓ PASS — blocked as expected[/{ARC_GREEN}]"))
+            outcome = {"allowed": "allowed as expected", "isolated": "isolated as expected"}.get(attack.expected, "blocked as expected")
+            await scroll.mount(Static(f"[{ARC_GREEN}]✓ PASS — {outcome}[/{ARC_GREEN}]"))
         elif last in ("FAIL",):
-            await scroll.mount(Static(f"[{ARC_RED}]✗ FAIL — not blocked, recheck[/{ARC_RED}]"))
+            outcome = {"allowed": "blocked unexpectedly (false positive), recheck", "isolated": "not isolated, recheck"}.get(attack.expected, "not blocked, recheck")
+            await scroll.mount(Static(f"[{ARC_RED}]✗ FAIL — {outcome}[/{ARC_RED}]"))
         elif last == "ERROR":
             await scroll.mount(Static(f"[{ARC_AMBER}]⚠ ERROR firing this attack[/{ARC_AMBER}]"))
         else:
