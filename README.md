@@ -6,9 +6,6 @@
 customers, with an enterprise-grade cybersecurity layer built around it — and its own
 purpose-built offensive security tooling to continuously validate that layer.**
 
-Internship project - Tunisie Telecom - NIDS (Reseaux et Securite des
-Donnees), ESPRIT. Career focus: Cloud Security Architecture.
-
 ---
 
 ## What it does
@@ -32,8 +29,8 @@ investigation is reviewable afterward through a real ticket list and case-detail
 not just logged. A reviewer can validate, correct or reject each case from the same
 screen.
 
-On top of that AI core sits a full cybersecurity layer, which is the actual focus of the
-internship: authentication, role-based access control, an AI security gateway that
+On top of that AI core sits a full cybersecurity layer, which is the main focus of the
+project: authentication, role-based access control, an AI security gateway that
 screens every prompt for injection/jailbreak attempts before it reaches the LLM,
 automated account containment (three independent mechanisms plus an immediate lock on a
 honeytoken hit), live session revocation, mutual TLS for the red-team channel, and a
